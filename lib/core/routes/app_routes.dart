@@ -4,6 +4,7 @@ import 'package:mechanix_browser/features/browser/presentation/screen/browser_sc
 import 'package:mechanix_browser/features/browser/presentation/screen/downloads_screen.dart';
 import 'package:mechanix_browser/features/browser/presentation/screen/history_screen.dart';
 import 'package:mechanix_browser/features/browser/presentation/screen/settings_screen.dart';
+import 'package:mechanix_browser/l10n/app_localizations.dart';
 
 class AppRoutes {
   static const String home = '/';
@@ -26,9 +27,13 @@ class AppRoutes {
         return MaterialPageRoute(builder: (_) => const SettingsScreen());
       default:
         return MaterialPageRoute(
-          builder: (_) => Scaffold(
+          builder: (context) => Scaffold(
             body: Center(
-              child: Text('No route defined for ${routeSettings.name}'),
+              child: Text(
+                AppLocalizations.of(
+                  context,
+                )!.noRouteDefined(routeSettings.name ?? ''),
+              ),
             ),
           ),
         );
