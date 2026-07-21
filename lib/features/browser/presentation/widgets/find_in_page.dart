@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mechanix_browser/features/browser/bloc/browser_bloc.dart';
+import 'package:mechanix_browser/l10n/app_localizations.dart';
 
 class FindInPageBar extends StatefulWidget {
   const FindInPageBar({super.key});
@@ -32,6 +33,7 @@ class _FindInPageBarState extends State<FindInPageBar> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return BlocBuilder<BrowserBloc, BrowserState>(
       buildWhen: (previous, current) =>
           previous.findMatchCountText != current.findMatchCountText,
@@ -68,19 +70,20 @@ class _FindInPageBarState extends State<FindInPageBar> {
                             color: Colors.white,
                             fontSize: 15,
                           ),
-                          decoration: const InputDecoration(
+                          decoration: InputDecoration(
                             isDense: true,
-                            hintText: "Find in page",
-                            hintStyle: TextStyle(
+                            hintText: l10n.findInPage,
+                            hintStyle: const TextStyle(
                               color: Color(0xFF8E8E93),
                               fontSize: 15,
                             ),
                             border: InputBorder.none,
-                            contentPadding: EdgeInsets.symmetric(
+                            contentPadding: const EdgeInsets.symmetric(
                               horizontal: 8,
                               vertical: 12,
                             ),
                           ),
+
                           onChanged: (value) {
                             bloc.add(BrowserFindInPageQueryChanged(value));
                           },

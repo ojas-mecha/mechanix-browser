@@ -156,5 +156,92 @@
   "noBookmarksSaved": "No bookmarks saved",
   "@noBookmarksSaved": {
     "description": "Empty state text when no bookmarks exist"
+  },
+  "findInPage": "Find in page",
+  "@findInPage": {
+    "description": "Hint text for find in page search bar"
+  },
+  "previousMatch": "Previous match",
+  "@previousMatch": {
+    "description": "Tooltip for previous match button"
+  },
+  "nextMatch": "Next match",
+  "@nextMatch": {
+    "description": "Tooltip for next match button"
+  },
+  "siteCantBeReached": "This site can't be reached",
+  "@siteCantBeReached": {
+    "description": "Title text on web error page"
+  },
+  "checkTypoInUrl": "Check if there is a typo in {url}.",
+  "@checkTypoInUrl": {
+    "description": "Description on web error page",
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
+  },
+  "reload": "Reload",
+  "@reload": {
+    "description": "Button label to reload page"
+  },
+  "clearFinished": "Clear finished",
+  "@clearFinished": {
+    "description": "Tooltip for clearing finished downloads"
+  },
+  "openDownloadsFolder": "Open Downloads Folder",
+  "@openDownloadsFolder": {
+    "description": "Tooltip for opening downloads directory"
+  },
+  "noDownloadsYet": "No downloads yet",
+  "@noDownloadsYet": {
+    "description": "Empty state title for downloads"
+  },
+  "noDownloadsDescription": "Files downloaded from web pages will appear here.",
+  "@noDownloadsDescription": {
+    "description": "Empty state subtitle for downloads"
+  },
+  "openFolder": "Open Folder",
+  "@openFolder": {
+    "description": "Tooltip/button to open file folder"
+  },
+  "failed": "Failed",
+  "@failed": {
+    "description": "Download status text for failed downloads"
+  },
+  "cancelled": "Cancelled",
+  "@cancelled": {
+    "description": "Download status text for cancelled downloads"
+  },
+  "networkError": "Network error",
+  "@networkError": {
+    "description": "Error reason for network error"
+  },
+  "serverError": "Server error",
+  "@serverError": {
+    "description": "Error reason for server error"
+  },
+  "userError": "User error",
+  "@userError": {
+    "description": "Error reason for user error"
+  },
+  "fileFailed": "File failed",
+  "@fileFailed": {
+    "description": "Error reason for file error"
+  },
+  "downloadingFile": "Downloading {filename}",
+  "@downloadingFile": {
+    "description": "Toast text for downloading a file",
+    "placeholders": {
+      "filename": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadingFiles": "Downloading files...",
+  "@downloadingFiles": {
+    "description": "Toast text for downloading multiple files"
   }
 }
+

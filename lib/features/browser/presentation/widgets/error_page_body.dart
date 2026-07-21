@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mechanix_browser/features/browser/bloc/browser_bloc.dart';
+import 'package:mechanix_browser/l10n/app_localizations.dart';
 
 class BrowserErrorPageBody extends StatelessWidget {
   final String url;
@@ -9,6 +10,7 @@ class BrowserErrorPageBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     // Format the URL for clean display (e.g. strip https://)
     String cleanUrl = url;
     try {
@@ -43,9 +45,9 @@ class BrowserErrorPageBody extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             // Title
-            const Text(
-              "This site can't be reached",
-              style: TextStyle(
+            Text(
+              l10n.siteCantBeReached,
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 20,
                 fontWeight: FontWeight.w600,
@@ -55,7 +57,7 @@ class BrowserErrorPageBody extends StatelessWidget {
             const SizedBox(height: 12),
             // Description
             Text(
-              "Check if there is a typo in $cleanUrl.",
+              l10n.checkTypoInUrl(cleanUrl),
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: Color(0xFF8E8E93),
@@ -94,14 +96,17 @@ class BrowserErrorPageBody extends StatelessWidget {
                   ),
                 ),
               ),
-              child: const Row(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.refresh_rounded, size: 18),
-                  SizedBox(width: 8),
+                  const Icon(Icons.refresh_rounded, size: 18),
+                  const SizedBox(width: 8),
                   Text(
-                    "Reload",
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                    l10n.reload,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ],
               ),

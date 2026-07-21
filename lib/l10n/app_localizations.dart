@@ -62,7 +62,7 @@ import 'app_localizations_en.dart';
 /// property.
 abstract class AppLocalizations {
   AppLocalizations(String locale)
-      : localeName = intl.Intl.canonicalizedLocale(locale.toString());
+    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
 
   final String localeName;
 
@@ -85,11 +85,11 @@ abstract class AppLocalizations {
   /// of delegates is preferred or required.
   static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
       <LocalizationsDelegate<dynamic>>[
-    delegate,
-    GlobalMaterialLocalizations.delegate,
-    GlobalCupertinoLocalizations.delegate,
-    GlobalWidgetsLocalizations.delegate,
-  ];
+        delegate,
+        GlobalMaterialLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+      ];
 
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[Locale('en')];
@@ -315,6 +315,120 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No bookmarks saved'**
   String get noBookmarksSaved;
+
+  /// Hint text for find in page search bar
+  ///
+  /// In en, this message translates to:
+  /// **'Find in page'**
+  String get findInPage;
+
+  /// Tooltip for previous match button
+  ///
+  /// In en, this message translates to:
+  /// **'Previous match'**
+  String get previousMatch;
+
+  /// Tooltip for next match button
+  ///
+  /// In en, this message translates to:
+  /// **'Next match'**
+  String get nextMatch;
+
+  /// Title text on web error page
+  ///
+  /// In en, this message translates to:
+  /// **'This site can\'t be reached'**
+  String get siteCantBeReached;
+
+  /// Description on web error page
+  ///
+  /// In en, this message translates to:
+  /// **'Check if there is a typo in {url}.'**
+  String checkTypoInUrl(String url);
+
+  /// Button label to reload page
+  ///
+  /// In en, this message translates to:
+  /// **'Reload'**
+  String get reload;
+
+  /// Tooltip for clearing finished downloads
+  ///
+  /// In en, this message translates to:
+  /// **'Clear finished'**
+  String get clearFinished;
+
+  /// Tooltip for opening downloads directory
+  ///
+  /// In en, this message translates to:
+  /// **'Open Downloads Folder'**
+  String get openDownloadsFolder;
+
+  /// Empty state title for downloads
+  ///
+  /// In en, this message translates to:
+  /// **'No downloads yet'**
+  String get noDownloadsYet;
+
+  /// Empty state subtitle for downloads
+  ///
+  /// In en, this message translates to:
+  /// **'Files downloaded from web pages will appear here.'**
+  String get noDownloadsDescription;
+
+  /// Tooltip/button to open file folder
+  ///
+  /// In en, this message translates to:
+  /// **'Open Folder'**
+  String get openFolder;
+
+  /// Download status text for failed downloads
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get failed;
+
+  /// Download status text for cancelled downloads
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled'**
+  String get cancelled;
+
+  /// Error reason for network error
+  ///
+  /// In en, this message translates to:
+  /// **'Network error'**
+  String get networkError;
+
+  /// Error reason for server error
+  ///
+  /// In en, this message translates to:
+  /// **'Server error'**
+  String get serverError;
+
+  /// Error reason for user error
+  ///
+  /// In en, this message translates to:
+  /// **'User error'**
+  String get userError;
+
+  /// Error reason for file error
+  ///
+  /// In en, this message translates to:
+  /// **'File failed'**
+  String get fileFailed;
+
+  /// Toast text for downloading a file
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading {filename}'**
+  String downloadingFile(String filename);
+
+  /// Toast text for downloading multiple files
+  ///
+  /// In en, this message translates to:
+  /// **'Downloading files...'**
+  String get downloadingFiles;
 }
 
 class _AppLocalizationsDelegate
@@ -342,8 +456,9 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
   }
 
   throw FlutterError(
-      'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
-      'an issue with the localizations generation tool. Please file an issue '
-      'on GitHub with a reproducible sample app and the gen-l10n configuration '
-      'that was used.');
+    'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
+    'an issue with the localizations generation tool. Please file an issue '
+    'on GitHub with a reproducible sample app and the gen-l10n configuration '
+    'that was used.',
+  );
 }

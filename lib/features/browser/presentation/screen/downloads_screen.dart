@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:mechanix_browser/l10n/app_localizations.dart';
 
 class DownloadsScreen extends StatelessWidget {
   const DownloadsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -18,9 +20,9 @@ class DownloadsScreen extends StatelessWidget {
           ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text(
-          "Downloads",
-          style: TextStyle(
+        title: Text(
+          l10n.downloads,
+          style: const TextStyle(
             color: Colors.white,
             fontSize: 20,
             fontWeight: FontWeight.bold,
@@ -45,18 +47,18 @@ class DownloadsScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-            const Text(
-              "Downloads is Coming Soon",
-              style: TextStyle(
+            Text(
+              l10n.comingSoon(l10n.downloads),
+              style: const TextStyle(
                 color: Colors.white70,
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
-              "We're working hard to bring this feature to you.",
-              style: TextStyle(color: Colors.white30, fontSize: 13),
+            Text(
+              l10n.workingHard,
+              style: const TextStyle(color: Colors.white30, fontSize: 13),
             ),
           ],
         ),

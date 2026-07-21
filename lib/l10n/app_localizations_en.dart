@@ -122,4 +122,66 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noBookmarksSaved => 'No bookmarks saved';
+
+  @override
+  String get findInPage => 'Find in page';
+
+  @override
+  String get previousMatch => 'Previous match';
+
+  @override
+  String get nextMatch => 'Next match';
+
+  @override
+  String get siteCantBeReached => 'This site can\'t be reached';
+
+  @override
+  String checkTypoInUrl(String url) {
+    return 'Check if there is a typo in $url.';
+  }
+
+  @override
+  String get reload => 'Reload';
+
+  @override
+  String get clearFinished => 'Clear finished';
+
+  @override
+  String get openDownloadsFolder => 'Open Downloads Folder';
+
+  @override
+  String get noDownloadsYet => 'No downloads yet';
+
+  @override
+  String get noDownloadsDescription =>
+      'Files downloaded from web pages will appear here.';
+
+  @override
+  String get openFolder => 'Open Folder';
+
+  @override
+  String get failed => 'Failed';
+
+  @override
+  String get cancelled => 'Cancelled';
+
+  @override
+  String get networkError => 'Network error';
+
+  @override
+  String get serverError => 'Server error';
+
+  @override
+  String get userError => 'User error';
+
+  @override
+  String get fileFailed => 'File failed';
+
+  @override
+  String downloadingFile(String filename) {
+    return 'Downloading $filename';
+  }
+
+  @override
+  String get downloadingFiles => 'Downloading files...';
 }
