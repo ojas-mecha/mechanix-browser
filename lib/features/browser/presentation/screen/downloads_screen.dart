@@ -11,7 +11,11 @@ class DownloadsScreen extends StatelessWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+          icon: const Icon(
+            Icons.arrow_back_ios_new,
+            color: Colors.white,
+            size: 20,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
@@ -52,10 +56,7 @@ class DownloadsScreen extends StatelessWidget {
             const SizedBox(height: 8),
             const Text(
               "We're working hard to bring this feature to you.",
-              style: TextStyle(
-                color: Colors.white30,
-                fontSize: 13,
-              ),
+              style: TextStyle(color: Colors.white30, fontSize: 13),
             ),
           ],
         ),
