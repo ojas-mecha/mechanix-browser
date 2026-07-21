@@ -5,16 +5,18 @@ class BrowserState extends Equatable {
   final List<BrowserTab> tabs;
   final int activeTabIndex;
   final List<BrowserHistory> searchResults;
-  final bool isFindInPageActive;
-  final String findMatchCountText;
+  final List<Bookmark> favorites;
+  final List<Bookmark> bookmarks;
+  final bool isCurrentUrlBookmarked;
 
   const BrowserState({
     required this.isInitialized,
     required this.tabs,
     required this.activeTabIndex,
     required this.searchResults,
-    required this.isFindInPageActive,
-    required this.findMatchCountText,
+    required this.favorites,
+    required this.bookmarks,
+    required this.isCurrentUrlBookmarked,
   });
 
   const BrowserState.initial()
@@ -22,8 +24,9 @@ class BrowserState extends Equatable {
         tabs = const [],
         activeTabIndex = 0,
         searchResults = const [],
-        isFindInPageActive = false,
-        findMatchCountText = "0/0";
+        favorites = const [],
+        bookmarks = const [],
+        isCurrentUrlBookmarked = false;
 
   BrowserTab? get activeTab =>
       tabs.isNotEmpty && activeTabIndex >= 0 && activeTabIndex < tabs.length
@@ -38,16 +41,19 @@ class BrowserState extends Equatable {
     List<BrowserTab>? tabs,
     int? activeTabIndex,
     List<BrowserHistory>? searchResults,
-    bool? isFindInPageActive,
-    String? findMatchCountText,
+    List<Bookmark>? favorites,
+    List<Bookmark>? bookmarks,
+    bool? isCurrentUrlBookmarked,
   }) {
     return BrowserState(
       isInitialized: isInitialized ?? this.isInitialized,
       tabs: tabs ?? this.tabs,
       activeTabIndex: activeTabIndex ?? this.activeTabIndex,
       searchResults: searchResults ?? this.searchResults,
-      isFindInPageActive: isFindInPageActive ?? this.isFindInPageActive,
-      findMatchCountText: findMatchCountText ?? this.findMatchCountText,
+      favorites: favorites ?? this.favorites,
+      bookmarks: bookmarks ?? this.bookmarks,
+      isCurrentUrlBookmarked:
+          isCurrentUrlBookmarked ?? this.isCurrentUrlBookmarked,
     );
   }
 
@@ -57,7 +63,8 @@ class BrowserState extends Equatable {
         tabs,
         activeTabIndex,
         searchResults,
-        isFindInPageActive,
-        findMatchCountText,
+        favorites,
+        bookmarks,
+        isCurrentUrlBookmarked,
       ];
 }

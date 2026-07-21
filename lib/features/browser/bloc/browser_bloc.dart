@@ -3,18 +3,23 @@ import 'dart:async';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mechanix_browser/core/utils/constants.dart';
+import 'package:mechanix_browser/features/browser/data/models/bookmark.dart';
+import 'package:mechanix_browser/features/browser/data/models/browser_history.dart';
 import 'package:mechanix_browser/features/browser/data/models/browser_tab.dart';
+import 'package:mechanix_browser/features/browser/data/repositories/bookmark_repository.dart';
+import 'package:mechanix_browser/features/browser/data/repositories/history_repository.dart';
+// import 'package:mechanix_browser/features/browser/download/bloc/download_bloc.dart';
+// import 'package:mechanix_browser/features/browser/download/bloc/download_event.dart';
 import 'package:webview_cef/webview_cef.dart';
-
-import '../../../core/utils/constants.dart';
-import '../data/models/browser_history.dart';
-import '../data/repositories/history_repository.dart';
 
 part 'browser_event.dart';
 part 'browser_state.dart';
 
 class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
+  // final DownloadBloc? downloadBloc;
   HistoryRepository? _historyRepository;
+  BookmarkRepository? _bookmarkRepository;
   int _tabIdCounter = 0;
 
   WebViewController get controller {
@@ -23,28 +28,27 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
     throw StateError("No active tab controller available.");
   }
 
+  // BrowserBloc({this.downloadBloc}) : super(BrowserState.initial()) {
   BrowserBloc() : super(BrowserState.initial()) {
     on<BrowserInitialized>(_onInitialized);
     on<BrowserUrlLoadRequested>(_onUrlLoadRequested);
     on<BrowserGoBackRequested>(_onGoBack);
     on<BrowserGoForwardRequested>(_onGoForward);
     on<BrowserReloadRequested>(_onReload);
-    on<BrowserDevToolsRequested>(_onDevTools);
     on<BrowserGoHomeRequested>(_onGoHome);
     on<BrowserUrlChanged>(_onUrlChanged);
     on<BrowserTitleChanged>(_onTitleChanged);
-    on<BrowserHistoryClearRequested>(_onHistoryClearRequested);
     on<BrowserSearchQueryChanged>(_onSearchQueryChanged);
     on<BrowserHistoryItemDeleted>(_onHistoryItemDeleted);
     on<BrowserNewTabRequested>(_onNewTabRequested);
     on<BrowserCloseTabRequested>(_onCloseTab);
     on<BrowserSwitchTabRequested>(_onSwitchTab);
     on<BrowserCloseAllTabsRequested>(_onCloseAllTabs);
-    on<BrowserFindInPageInitRequested>(_onFindInPageInit);
-    on<BrowserFindInPageQueryChanged>(_onFindInPageQueryChanged);
-    on<BrowserFindInPageNextRequested>(_onFindInPageNext);
-    on<BrowserFindInPagePrevRequested>(_onFindInPagePrev);
-    on<BrowserFindInPageCloseRequested>(_onFindInPageClose);
+    on<BrowserBookmarkAdded>(_onBookmarkAdded);
+    on<BrowserBookmarkRemoved>(_onBookmarkRemoved);
+    on<BrowserBookmarkToggled>(_onBookmarkToggled);
+    on<BrowserDevToolsRequested>(_onDevTools);
+    on<BrowserHistoryClearRequested>(_onHistoryClearRequested);
   }
 
   BrowserTab _createNewTab(String initialUrl) {
@@ -63,9 +67,7 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
     );
 
     final controller = WebviewManager().createWebView(
-      loading: const Center(
-        child: CircularProgressIndicator(color: Colors.white70),
-      ),
+      loading: const Center(child: CircularProgressIndicator()),
       injectUserScripts: injectUserScripts,
     );
 
@@ -93,7 +95,6 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
         add(BrowserTitleChanged(tabId: tabId, title: t));
       },
       onUrlChanged: (url) {
-        if (url.startsWith('data:')) return;
         add(BrowserUrlChanged(tabId: tabId, url: url));
 
         final Set<JavascriptChannel> jsChannels = {
@@ -117,13 +118,67 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
             .then((value) => debugPrint(value));
       },
       onLoadStart: (c, url) {
-        if (url.startsWith('data:')) return;
         debugPrint("onLoadStart => $url");
       },
       onLoadEnd: (c, url) {
-        if (url.startsWith('data:')) return;
         debugPrint("onLoadEnd => $url");
       },
+      // onBeforeDownload:
+      //     (
+      //       c,
+      //       downloadId,
+      //       url,
+      //       suggestedName,
+      //       contentDisposition,
+      //       mimeType,
+      //       totalBytes,
+      //     ) {
+      //       downloadBloc?.add(
+      //         DownloadBeforeStarted(
+      //           controller: c,
+      //           downloadId: downloadId,
+      //           url: url,
+      //           suggestedName: suggestedName,
+      //           contentDisposition: contentDisposition,
+      //           mimeType: mimeType,
+      //           totalBytes: totalBytes,
+      //         ),
+      //       );
+      //     },
+      // onDownloadUpdated:
+      //     (
+      //       c,
+      //       downloadId,
+      //       url,
+      //       fullPath,
+      //       receivedBytes,
+      //       totalBytes,
+      //       currentSpeed,
+      //       percentComplete,
+      //       isInProgress,
+      //       isComplete,
+      //       isCanceled,
+      //       isInterrupted,
+      //       interruptReason,
+      //     ) {
+      //       downloadBloc?.add(
+      //         DownloadUpdatedEvent(
+      //           controller: c,
+      //           downloadId: downloadId,
+      //           url: url,
+      //           fullPath: fullPath,
+      //           receivedBytes: receivedBytes,
+      //           totalBytes: totalBytes,
+      //           currentSpeed: currentSpeed,
+      //           percentComplete: percentComplete,
+      //           isInProgress: isInProgress,
+      //           isComplete: isComplete,
+      //           isCanceled: isCanceled,
+      //           isInterrupted: isInterrupted,
+      //           interruptReason: interruptReason,
+      //         ),
+      //       );
+      //     },
     );
   }
 
@@ -133,6 +188,9 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
   ) async {
     try {
       _historyRepository = await HistoryRepository.create();
+      _bookmarkRepository = await BookmarkRepository.create(
+        store: _historyRepository!.store,
+      );
 
       await WebviewManager().initialize(
         userAgent: AppConstants.defaultUserAgent,
@@ -140,16 +198,118 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
 
       final firstTab = _createNewTab(AppConstants.homepageUrl);
 
+      final favorites = _bookmarkRepository!.getFavorites();
+      final bookmarks = _bookmarkRepository!.getBookmarks();
+
       emit(
         state.copyWith(
           isInitialized: true,
           tabs: [firstTab],
           activeTabIndex: 0,
+          favorites: favorites,
+          bookmarks: bookmarks,
+          isCurrentUrlBookmarked: false,
         ),
       );
     } catch (e) {
       debugPrint("Webview initialization error: $e");
     }
+  }
+
+  void _refreshFullBookmarksAndFavorites(Emitter<BrowserState> emit) {
+    if (_bookmarkRepository == null) return;
+
+    final favorites = _bookmarkRepository!.getFavorites();
+    final bookmarks = _bookmarkRepository!.getBookmarks();
+    final isBookmarked =
+        state.currentUrl.isNotEmpty &&
+        bookmarks.any(
+          (b) =>
+              b.url.trim().toLowerCase() ==
+              state.currentUrl.trim().toLowerCase(),
+        );
+
+    emit(
+      state.copyWith(
+        favorites: favorites,
+        bookmarks: bookmarks,
+        isCurrentUrlBookmarked: isBookmarked,
+      ),
+    );
+  }
+
+  void _updateCurrentPageBookmarkStatus(
+    Emitter<BrowserState> emit, {
+    String? targetUrl,
+  }) {
+    final currentUrl = (targetUrl ?? state.currentUrl).trim();
+    if (currentUrl.isEmpty) {
+      emit(state.copyWith(isCurrentUrlBookmarked: false));
+      return;
+    }
+
+    final isBookmarked = state.bookmarks.any(
+      (b) => b.url.trim().toLowerCase() == currentUrl.toLowerCase(),
+    );
+
+    emit(state.copyWith(isCurrentUrlBookmarked: isBookmarked));
+  }
+
+  Future<void> _onBookmarkAdded(
+    BrowserBookmarkAdded event,
+    Emitter<BrowserState> emit,
+  ) async {
+    if (_bookmarkRepository == null) return;
+
+    final bookmark = Bookmark.create(
+      url: event.url.trim(),
+      title: event.label != null && event.label!.isNotEmpty
+          ? event.label!.trim()
+          : null,
+      iconUrl: event.url,
+      timestamp: DateTime.now().millisecondsSinceEpoch,
+      type: event.type,
+    );
+
+    _bookmarkRepository!.addOrUpdate(bookmark);
+    _refreshFullBookmarksAndFavorites(emit);
+  }
+
+  Future<void> _onBookmarkRemoved(
+    BrowserBookmarkRemoved event,
+    Emitter<BrowserState> emit,
+  ) async {
+    if (_bookmarkRepository == null) return;
+
+    _bookmarkRepository!.remove(event.id);
+    _refreshFullBookmarksAndFavorites(emit);
+  }
+
+  Future<void> _onBookmarkToggled(
+    BrowserBookmarkToggled event,
+    Emitter<BrowserState> emit,
+  ) async {
+    if (_bookmarkRepository == null) return;
+
+    final url = event.url.trim();
+    if (url.isEmpty) return;
+
+    final isAlreadyBookmarked = _bookmarkRepository!.isBookmarked(url);
+    if (isAlreadyBookmarked) {
+      _bookmarkRepository!.removeByUrlAndType(url, BookmarkType.bookmark);
+    } else {
+      final bookmark = Bookmark.create(
+        url: url,
+        title: event.title?.trim().isNotEmpty == true
+            ? event.title!.trim()
+            : null,
+        timestamp: DateTime.now().millisecondsSinceEpoch,
+        type: BookmarkType.bookmark,
+      );
+      _bookmarkRepository!.addOrUpdate(bookmark);
+    }
+
+    _refreshFullBookmarksAndFavorites(emit);
   }
 
   Future<void> _onNewTabRequested(
@@ -172,14 +332,9 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
     final updatedTabs = List<BrowserTab>.from(state.tabs)..add(newTab);
     final newActiveIndex = updatedTabs.length - 1;
 
-    emit(
-      state.copyWith(
-        tabs: updatedTabs,
-        activeTabIndex: newActiveIndex,
-        isFindInPageActive: false,
-        findMatchCountText: "0/0",
-      ),
-    );
+    emit(state.copyWith(tabs: updatedTabs, activeTabIndex: newActiveIndex));
+
+    _updateCurrentPageBookmarkStatus(emit, targetUrl: newTab.currentUrl);
 
     newTab.controller.ready.then((_) async {
       final currentActiveTab = state.activeTab;
@@ -203,14 +358,8 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
         currentUrl: '',
         title: '',
       );
-      emit(
-        state.copyWith(
-          tabs: [updatedTab],
-          activeTabIndex: 0,
-          isFindInPageActive: false,
-          findMatchCountText: "0/0",
-        ),
-      );
+      emit(state.copyWith(tabs: [updatedTab], activeTabIndex: 0));
+      _updateCurrentPageBookmarkStatus(emit, targetUrl: '');
       if (activeTab.controller.value) {
         await activeTab.controller.loadUrl(AppConstants.homepageUrl);
       }
@@ -231,16 +380,11 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
       newActiveIndex = state.activeTabIndex - 1;
     }
 
-    emit(
-      state.copyWith(
-        tabs: updatedTabs,
-        activeTabIndex: newActiveIndex,
-        isFindInPageActive: false,
-        findMatchCountText: "0/0",
-      ),
-    );
+    emit(state.copyWith(tabs: updatedTabs, activeTabIndex: newActiveIndex));
 
     final newActiveTab = updatedTabs[newActiveIndex];
+    _updateCurrentPageBookmarkStatus(emit, targetUrl: newActiveTab.currentUrl);
+
     if (newActiveTab.controller.value) {
       await newActiveTab.controller.setClientFocus(true);
     } else {
@@ -274,13 +418,8 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
       }
     }
 
-    emit(
-      state.copyWith(
-        activeTabIndex: index,
-        isFindInPageActive: false,
-        findMatchCountText: "0/0",
-      ),
-    );
+    emit(state.copyWith(activeTabIndex: index));
+    _updateCurrentPageBookmarkStatus(emit, targetUrl: newTab.currentUrl);
 
     if (newTab.controller.value) {
       await newTab.controller.setClientFocus(true);
@@ -304,14 +443,8 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
 
     final firstTab = _createNewTab(AppConstants.homepageUrl);
 
-    emit(
-      state.copyWith(
-        tabs: [firstTab],
-        activeTabIndex: 0,
-        isFindInPageActive: false,
-        findMatchCountText: "0/0",
-      ),
-    );
+    emit(state.copyWith(tabs: [firstTab], activeTabIndex: 0));
+    _updateCurrentPageBookmarkStatus(emit, targetUrl: '');
 
     firstTab.controller.ready.then((_) async {
       final currentActiveTab = state.activeTab;
@@ -349,14 +482,9 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
     final updatedTabs = List<BrowserTab>.from(state.tabs);
     updatedTabs[state.activeTabIndex] = updatedTab;
 
-    emit(
-      state.copyWith(
-        tabs: updatedTabs,
-        searchResults: [],
-        isFindInPageActive: false,
-        findMatchCountText: "0/0",
-      ),
-    );
+    emit(state.copyWith(tabs: updatedTabs, searchResults: []));
+    _updateCurrentPageBookmarkStatus(emit, targetUrl: finalUrl);
+
     if (activeTab.controller.value) {
       await activeTab.controller.loadUrl(finalUrl);
     }
@@ -411,13 +539,8 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
       final updatedTab = activeTab.copyWith(isHomePage: true, currentUrl: '');
       final updatedTabs = List<BrowserTab>.from(state.tabs);
       updatedTabs[state.activeTabIndex] = updatedTab;
-      emit(
-        state.copyWith(
-          tabs: updatedTabs,
-          isFindInPageActive: false,
-          findMatchCountText: "0/0",
-        ),
-      );
+      emit(state.copyWith(tabs: updatedTabs));
+      _updateCurrentPageBookmarkStatus(emit, targetUrl: '');
       if (activeTab.controller.value) {
         await activeTab.controller.loadUrl(AppConstants.homepageUrl);
       }
@@ -437,13 +560,13 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
     final updatedTabs = List<BrowserTab>.from(state.tabs);
     updatedTabs[index] = updatedTab;
 
-    emit(
-      state.copyWith(
-        tabs: updatedTabs,
-        isFindInPageActive: false,
-        findMatchCountText: "0/0",
-      ),
-    );
+    emit(state.copyWith(tabs: updatedTabs));
+    if (index == state.activeTabIndex) {
+      _updateCurrentPageBookmarkStatus(
+        emit,
+        targetUrl: isHome ? '' : event.url,
+      );
+    }
   }
 
   void _onTitleChanged(BrowserTitleChanged event, Emitter<BrowserState> emit) {
@@ -527,233 +650,7 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
     }
     await WebviewManager().quit();
     _historyRepository?.close();
+    _bookmarkRepository?.close();
     return super.close();
   }
-
-  Future<void> _onFindInPageInit(
-    BrowserFindInPageInitRequested event,
-    Emitter<BrowserState> emit,
-  ) async {
-    if (!state.isInitialized || state.activeTab == null) return;
-
-    try {
-      await controller.executeJavaScript(_findInPageJs);
-    } catch (e) {
-      debugPrint("Error injecting find in page JS: $e");
-    }
-
-    emit(state.copyWith(isFindInPageActive: true, findMatchCountText: "0/0"));
-  }
-
-  Future<void> _onFindInPageQueryChanged(
-    BrowserFindInPageQueryChanged event,
-    Emitter<BrowserState> emit,
-  ) async {
-    if (!state.isInitialized || state.activeTab == null) return;
-
-    try {
-      final escapedQuery = event.query.replaceAll("'", "\\'");
-      final dynamic result = await controller.evaluateJavascript(
-        "window.__cefFindInPage.highlight('$escapedQuery')",
-      );
-      emit(state.copyWith(findMatchCountText: result?.toString() ?? "0/0"));
-    } catch (e) {
-      debugPrint("Error finding text: $e");
-    }
-  }
-
-  Future<void> _onFindInPageNext(
-    BrowserFindInPageNextRequested event,
-    Emitter<BrowserState> emit,
-  ) async {
-    if (!state.isInitialized || state.activeTab == null) return;
-
-    try {
-      final dynamic result = await controller.evaluateJavascript(
-        "window.__cefFindInPage.next()",
-      );
-      emit(state.copyWith(findMatchCountText: result?.toString() ?? "0/0"));
-    } catch (e) {
-      debugPrint("Error finding next: $e");
-    }
-  }
-
-  Future<void> _onFindInPagePrev(
-    BrowserFindInPagePrevRequested event,
-    Emitter<BrowserState> emit,
-  ) async {
-    if (!state.isInitialized || state.activeTab == null) return;
-
-    try {
-      final dynamic result = await controller.evaluateJavascript(
-        "window.__cefFindInPage.prev()",
-      );
-      emit(state.copyWith(findMatchCountText: result?.toString() ?? "0/0"));
-    } catch (e) {
-      debugPrint("Error finding prev: $e");
-    }
-  }
-
-  Future<void> _onFindInPageClose(
-    BrowserFindInPageCloseRequested event,
-    Emitter<BrowserState> emit,
-  ) async {
-    if (state.isInitialized && state.activeTab != null) {
-      try {
-        await controller.executeJavaScript("window.__cefFindInPage.clear()");
-      } catch (e) {
-        debugPrint("Error clearing find in page: $e");
-      }
-    }
-
-    emit(state.copyWith(isFindInPageActive: false, findMatchCountText: "0/0"));
-  }
 }
-
-const String _findInPageJs = r'''
-(function() {
-  if (window.__cefFindInPage) return;
-  class CefFindInPage {
-    constructor() {
-      this.matches = [];
-      this.currentIndex = -1;
-      this.query = "";
-      this.injectStyle();
-    }
-    injectStyle() {
-      if (document.getElementById('cef-find-style')) return;
-      const style = document.createElement('style');
-      style.id = 'cef-find-style';
-      style.textContent = `
-        mark.cef-find-match {
-          background-color: #fce83a !important;
-          color: #000000 !important;
-          padding: 0 !important;
-          margin: 0 !important;
-        }
-        mark.cef-find-active {
-          background-color: #ff9800 !important;
-          color: #000000 !important;
-          box-shadow: 0 0 3px rgba(0,0,0,0.5) !important;
-        }
-      `;
-      document.head.appendChild(style);
-    }
-    clear() {
-      this.removeHighlights();
-      const style = document.getElementById('cef-find-style');
-      if (style) style.remove();
-      this.matches = [];
-      this.currentIndex = -1;
-      this.query = "";
-    }
-    removeHighlights() {
-      const highlighted = document.querySelectorAll('mark.cef-find-match');
-      for (let i = highlighted.length - 1; i >= 0; i--) {
-        const el = highlighted[i];
-        const parent = el.parentNode;
-        if (parent) {
-          const textNode = document.createTextNode(el.textContent);
-          parent.replaceChild(textNode, el);
-          parent.normalize();
-        }
-      }
-      this.matches = [];
-      this.currentIndex = -1;
-    }
-    highlight(query) {
-      this.removeHighlights();
-      if (!query || query.trim() === "") {
-        return "0/0";
-      }
-      this.query = query;
-      this.injectStyle();
-      
-      const textNodes = [];
-      const walk = document.createTreeWalker(
-        document.body,
-        NodeFilter.SHOW_TEXT,
-        {
-          acceptNode: function(node) {
-            const parent = node.parentNode;
-            if (!parent) return NodeFilter.FILTER_REJECT;
-            const tag = parent.tagName.toUpperCase();
-            if (['SCRIPT', 'STYLE', 'TEXTAREA', 'INPUT', 'NOSCRIPT', 'IFRAME'].includes(tag)) {
-              return NodeFilter.FILTER_REJECT;
-            }
-            return NodeFilter.FILTER_ACCEPT;
-          }
-        }
-      );
-      
-      let node;
-      while (node = walk.nextNode()) {
-        textNodes.push(node);
-      }
-      
-      const escaped = query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-      const regex = new RegExp("(" + escaped + ")", "gi");
-      
-      for (let i = textNodes.length - 1; i >= 0; i--) {
-        const textNode = textNodes[i];
-        const text = textNode.nodeValue;
-        if (regex.test(text)) {
-          const parent = textNode.parentNode;
-          if (!parent) continue;
-          regex.lastIndex = 0;
-          const fragments = document.createDocumentFragment();
-          let lastIdx = 0;
-          let match;
-          while ((match = regex.exec(text)) !== null) {
-            if (match.index > lastIdx) {
-              fragments.appendChild(document.createTextNode(text.substring(lastIdx, match.index)));
-            }
-            const mark = document.createElement('mark');
-            mark.className = 'cef-find-match';
-            mark.textContent = match[0];
-            fragments.appendChild(mark);
-            lastIdx = regex.lastIndex;
-          }
-          if (lastIdx < text.length) {
-            fragments.appendChild(document.createTextNode(text.substring(lastIdx)));
-          }
-          parent.replaceChild(fragments, textNode);
-        }
-      }
-      
-      this.matches = Array.from(document.querySelectorAll('mark.cef-find-match'));
-      if (this.matches.length > 0) {
-        this.currentIndex = 0;
-        this.activateMatch(0);
-        return "1/" + this.matches.length;
-      }
-      return "0/0";
-    }
-    activateMatch(index) {
-      if (this.matches.length === 0) return;
-      const active = document.querySelector('mark.cef-find-active');
-      if (active) {
-        active.classList.remove('cef-find-active');
-      }
-      const current = this.matches[index];
-      if (current) {
-        current.classList.add('cef-find-active');
-        current.scrollIntoView({ behavior: 'auto', block: 'center' });
-      }
-    }
-    next() {
-      if (this.matches.length === 0) return "0/0";
-      this.currentIndex = (this.currentIndex + 1) % this.matches.length;
-      this.activateMatch(this.currentIndex);
-      return (this.currentIndex + 1) + "/" + this.matches.length;
-    }
-    prev() {
-      if (this.matches.length === 0) return "0/0";
-      this.currentIndex = (this.currentIndex - 1 + this.matches.length) % this.matches.length;
-      this.activateMatch(this.currentIndex);
-      return (this.currentIndex + 1) + "/" + this.matches.length;
-    }
-  }
-  window.__cefFindInPage = new CefFindInPage();
-})();
-''';

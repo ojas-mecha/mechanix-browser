@@ -34,10 +34,10 @@ class BrowserWebviewBody extends StatelessWidget {
                   ],
                 ),
                 if (tab.isHomePage)
-                  const Positioned.fill(
+                  Positioned.fill(
                     child: Material(
-                      color: Colors.black,
-                      child: BrowserHomePageBody(),
+                      color: Theme.of(context).scaffoldBackgroundColor,
+                      child: const BrowserHomePageBody(),
                     ),
                   ),
               ],

@@ -92,18 +92,43 @@ class BrowserHistoryItemDeleted extends BrowserEvent {
   List<Object?> get props => [item, currentQuery];
 }
 
-class BrowserFindInPageInitRequested extends BrowserEvent {}
+class BrowserBookmarkAdded extends BrowserEvent {
+  final String url;
+  final String? label;
+  final BookmarkType type;
 
-class BrowserFindInPageQueryChanged extends BrowserEvent {
-  final String query;
-  const BrowserFindInPageQueryChanged(this.query);
+  const BrowserBookmarkAdded({
+    required this.url,
+    required this.label,
+    required this.type,
+  });
 
   @override
-  List<Object?> get props => [query];
+  List<Object?> get props => [url, label, type];
 }
 
-class BrowserFindInPageNextRequested extends BrowserEvent {}
+class BrowserBookmarkRemoved extends BrowserEvent {
+  final int id;
+  final BookmarkType type;
 
-class BrowserFindInPagePrevRequested extends BrowserEvent {}
+  const BrowserBookmarkRemoved({
+    required this.id,
+    required this.type,
+  });
 
-class BrowserFindInPageCloseRequested extends BrowserEvent {}
+  @override
+  List<Object?> get props => [id, type];
+}
+
+class BrowserBookmarkToggled extends BrowserEvent {
+  final String url;
+  final String? title;
+
+  const BrowserBookmarkToggled({
+    required this.url,
+    this.title,
+  });
+
+  @override
+  List<Object?> get props => [url, title];
+}

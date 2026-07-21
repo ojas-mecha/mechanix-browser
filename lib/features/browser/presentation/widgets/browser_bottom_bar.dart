@@ -2,12 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mechanix_browser/core/utils/app_theme.dart';
 import 'package:mechanix_browser/features/browser/bloc/browser_bloc.dart';
-import 'package:mechanix_browser/features/browser/presentation/widgets/bottom_icon_button.dart';
+import 'package:mechanix_browser/features/browser/presentation/widgets/bottom_bar/browser_bottom_actions.dart';
+import 'package:mechanix_browser/features/browser/presentation/widgets/bottom_bar/browser_search_input.dart';
 import 'package:mechanix_browser/features/browser/presentation/widgets/browser_menu_popup.dart';
 import 'package:mechanix_browser/features/browser/presentation/widgets/browser_suggestions_panel.dart';
-import 'package:mechanix_browser/features/browser/presentation/widgets/find_in_page.dart';
-import 'package:mechanix_browser/features/browser/presentation/widgets/tab_count_button.dart';
 import 'package:mechanix_browser/features/browser/presentation/widgets/tab_switcher_sheet.dart';
 
 class BrowserBottomBar extends StatefulWidget {
@@ -51,7 +51,7 @@ class _BrowserBottomBarState extends State<BrowserBottomBar> {
         return Positioned(
           left: 0,
           right: 0,
-          bottom: 72, // Float above the 72px bottom bar
+          bottom: 72,
           child: Material(
             color: Colors.transparent,
             child: TapRegion(
@@ -99,21 +99,18 @@ class _BrowserBottomBarState extends State<BrowserBottomBar> {
 
     _menuOverlayEntry = OverlayEntry(
       builder: (context) {
+        final colors = Theme.of(context).extension<AppColorsExtension>()!;
         return Stack(
           children: [
-            // Full screen dismissible barrier
             GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTap: _hideMenu,
-              child: Container(
-                color: Colors.black26, // Subtle dimming overlay
-              ),
+              child: Container(color: colors.popupBarrierColor),
             ),
-            // Floating menu popover positioned above the bottom bar
             Positioned(
               right: 16,
-              bottom: 76, // Float exactly above the bottom bar
-              width: 320, // Width matches the screenshot popover
+              bottom: 76,
+              width: 320,
               child: Material(
                 color: Colors.transparent,
                 child: BrowserMenuPopupContent(
@@ -121,7 +118,7 @@ class _BrowserBottomBarState extends State<BrowserBottomBar> {
                   onDismiss: _hideMenu,
                   onFindInPage: () {
                     _hideMenu();
-                    bloc.add(BrowserFindInPageInitRequested());
+                    _focusNode.requestFocus();
                   },
                 ),
               ),
@@ -155,6 +152,7 @@ class _BrowserBottomBarState extends State<BrowserBottomBar> {
   @override
   Widget build(BuildContext context) {
     final bloc = context.read<BrowserBloc>();
+    final theme = Theme.of(context);
 
     return BlocListener<BrowserBloc, BrowserState>(
       listenWhen: (previous, current) =>
@@ -173,12 +171,8 @@ class _BrowserBottomBarState extends State<BrowserBottomBar> {
       child: BlocBuilder<BrowserBloc, BrowserState>(
         buildWhen: (previous, current) =>
             previous.isInitialized != current.isInitialized ||
-            previous.tabs.length != current.tabs.length ||
-            previous.isFindInPageActive != current.isFindInPageActive,
+            previous.tabs.length != current.tabs.length,
         builder: (context, state) {
-          if (state.isFindInPageActive) {
-            return const FindInPageBar();
-          }
           return TapRegion(
             groupId: 'browser_search',
             onTapOutside: (event) {
@@ -189,46 +183,14 @@ class _BrowserBottomBarState extends State<BrowserBottomBar> {
               );
             },
             child: Container(
-              color: Colors.black,
+              color: theme.scaffoldBackgroundColor,
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
               child: Row(
                 children: [
                   Expanded(
-                    child: SearchBar(
+                    child: BrowserSearchInput(
                       focusNode: _focusNode,
                       controller: _textController,
-                      elevation: const WidgetStatePropertyAll(0),
-                      backgroundColor: const WidgetStatePropertyAll(
-                        Color(0xFF1C1C1E),
-                      ),
-                      shape: WidgetStatePropertyAll(
-                        RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(24),
-                          side: const BorderSide(
-                            color: Colors.white10,
-                            width: 1,
-                          ),
-                        ),
-                      ),
-                      padding: const WidgetStatePropertyAll(
-                        EdgeInsets.symmetric(horizontal: 16),
-                      ),
-                      constraints: const BoxConstraints(
-                        minHeight: 48,
-                        maxHeight: 48,
-                      ),
-                      leading: const Icon(
-                        Icons.lock_outline,
-                        color: Color(0xFF8E8E93),
-                        size: 18,
-                      ),
-                      hintText: "Search or enter address",
-                      hintStyle: const WidgetStatePropertyAll(
-                        TextStyle(color: Color(0xFF8E8E93), fontSize: 15),
-                      ),
-                      textStyle: const WidgetStatePropertyAll(
-                        TextStyle(color: Colors.white, fontSize: 15),
-                      ),
                       onChanged: (value) {
                         _debounceTimer?.cancel();
                         _debounceTimer = Timer(
@@ -248,11 +210,10 @@ class _BrowserBottomBarState extends State<BrowserBottomBar> {
                       },
                     ),
                   ),
-                  if (!_focusNode.hasFocus) ...[
-                    const SizedBox(width: 16),
-                    BottomIconButton(
-                      icon: Icons.add,
-                      onTap: () {
+                  if (!_focusNode.hasFocus)
+                    BrowserBottomActions(
+                      tabCount: state.tabs.length,
+                      onNewTab: () {
                         if (state.isInitialized) {
                           bloc.add(const BrowserNewTabRequested());
                           bloc.add(const BrowserSearchQueryChanged(''));
@@ -260,28 +221,19 @@ class _BrowserBottomBarState extends State<BrowserBottomBar> {
                           _focusNode.unfocus();
                         }
                       },
-                    ),
-                    const SizedBox(width: 16),
-                    TabCountButton(
-                      count: state.tabs.length,
-                      onTap: () {
+                      onOpenTabs: () {
                         if (state.isInitialized) {
                           _hideOverlay();
                           _focusNode.unfocus();
                           TabSwitcherSheet.show(context, bloc);
                         }
                       },
-                    ),
-                    const SizedBox(width: 16),
-                    BottomIconButton(
-                      icon: Icons.menu,
-                      onTap: () {
+                      onOpenMenu: () {
                         _hideOverlay();
                         _focusNode.unfocus();
                         _showMenu();
                       },
                     ),
-                  ],
                 ],
               ),
             ),

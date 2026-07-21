@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:mechanix_browser/core/utils/app_theme.dart';
 import 'package:mechanix_browser/features/browser/bloc/browser_bloc.dart';
-import 'package:mechanix_browser/features/browser/data/models/browser_history.dart';
 
 class BrowserSuggestionsPanel extends StatelessWidget {
   final TextEditingController textController;
@@ -20,17 +20,20 @@ class BrowserSuggestionsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.extension<AppColorsExtension>()!;
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFF161616).withValues(alpha: 0.95),
+        color: colors.panelBackground.withValues(alpha: 0.95),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white10, width: 1),
-        boxShadow: const [
+        border: Border.all(color: colors.panelBorder, width: 1),
+        boxShadow: [
           BoxShadow(
-            color: Colors.black54,
+            color: colors.popupBarrierColor.withValues(alpha: 0.5),
             blurRadius: 10,
-            offset: Offset(0, -4),
+            offset: const Offset(0, -4),
           ),
         ],
       ),
@@ -42,27 +45,27 @@ class BrowserSuggestionsPanel extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 8),
           itemCount: state.searchResults.length,
           separatorBuilder: (context, index) =>
-              const Divider(color: Colors.white10, height: 1),
+              Divider(color: colors.dividerColor, height: 1),
           itemBuilder: (context, index) {
             final item = state.searchResults[index];
             return ListTile(
-              leading: _buildLeadingIcon(item),
+              leading: const _SuggestionLeadingIcon(),
               title: Text(
                 item.title,
-                style: const TextStyle(color: Colors.white, fontSize: 14),
+                style: theme.textTheme.bodyMedium,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
               subtitle: Text(
                 item.url,
-                style: const TextStyle(color: Color(0xFF8E8E93), fontSize: 11),
+                style: theme.textTheme.labelSmall,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
               dense: true,
               visualDensity: VisualDensity.compact,
               trailing: IconButton(
-                icon: const Icon(Icons.close, size: 16, color: Colors.white38),
+                icon: Icon(Icons.close, size: 16, color: colors.textTertiary),
                 onPressed: () {
                   bloc.add(
                     BrowserHistoryItemDeleted(item, textController.text),
@@ -89,8 +92,14 @@ class BrowserSuggestionsPanel extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _buildLeadingIcon(BrowserHistory item) {
-    return const Icon(Icons.history, color: Color(0xFF8E8E93), size: 20);
+class _SuggestionLeadingIcon extends StatelessWidget {
+  const _SuggestionLeadingIcon();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).extension<AppColorsExtension>()!;
+    return Icon(Icons.history, color: colors.inactiveGrey, size: 20);
   }
 }

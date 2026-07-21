@@ -54,6 +54,7 @@ class HistoryRepository {
   }
 
   void saveHistory(BrowserHistory history) {
+    // TODO: later we need to implement this
     // try {
     //   historyBox.put(history);
     // } catch (e, stackTrace) {
@@ -64,6 +65,7 @@ class HistoryRepository {
   }
 
   void clearHistory() {
+    // TODO: later we need to implement this
     // try {
     //   historyBox.removeAll();
     // } catch (e, stackTrace) {
@@ -71,74 +73,6 @@ class HistoryRepository {
     //   debugPrint(stackTrace.toString());
     //   rethrow;
     // }
-  }
-
-  Future<void> seedIfEmpty() async {
-    try {
-      if (historyBox.isEmpty()) {
-        final now = DateTime.now().millisecondsSinceEpoch;
-        final seeds = [
-          BrowserHistory(
-            url: 'https://www.google.com/search?q=gesture+navigation',
-            title: 'gesture navigation',
-            timestamp: now - 13000,
-          ),
-          BrowserHistory(
-            url: 'https://www.google.com/search?q=monkeytype+speed+test',
-            title: 'monkeytype speed test',
-            timestamp: now - 12000,
-          ),
-          BrowserHistory(
-            url: 'https://www.google.com/search?q=foss+handbook',
-            title: 'foss handbook',
-            timestamp: now - 11000,
-          ),
-          BrowserHistory(
-            url: 'https://www.google.com/search?q=Example+recent+search',
-            title: 'Example recent search',
-            timestamp: now - 10000,
-          ),
-          BrowserHistory(
-            url:
-                'https://www.google.com/search?q=How+to+make+a+startup+from+scratch',
-            title: 'How to make a startup from scratch',
-            timestamp: now - 9000,
-          ),
-          BrowserHistory(url: '', title: 'comet.design', timestamp: now - 8000),
-          BrowserHistory(
-            url: 'https://monkeytype.com',
-            title: 'monkeytype.com',
-            timestamp: now - 7000,
-          ),
-          BrowserHistory(url: '', title: '', timestamp: now - 6000),
-          BrowserHistory(url: '', title: 'archlinux', timestamp: now - 5000),
-          BrowserHistory(
-            url: 'https://news.ycombinator.com',
-            title: 'news.ycombinator.com',
-            timestamp: now - 4000,
-          ),
-          BrowserHistory(
-            url: 'https://www.google.com/search?q=handheld+ux+patterns',
-            title: 'handheld ux patterns',
-            timestamp: now - 3000,
-          ),
-          BrowserHistory(
-            url: 'https://www.google.com/search?q=mechanical+keyboard+reviews',
-            title: 'mechanical keyboard reviews',
-            timestamp: now - 2000,
-          ),
-          BrowserHistory(
-            url: 'https://www.google.com/search?q=linux+ricing+guide',
-            title: 'linux ricing guide',
-            timestamp: now - 1000,
-          ),
-        ];
-        historyBox.putMany(seeds);
-      }
-    } catch (e, stackTrace) {
-      debugPrint('Unable to seed history database: $e');
-      debugPrint(stackTrace.toString());
-    }
   }
 
   List<BrowserHistory> searchHistory(String queryText) {
