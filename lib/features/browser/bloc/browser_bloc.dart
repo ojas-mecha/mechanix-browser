@@ -55,6 +55,8 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
     on<BrowserCloseTabRequested>(_onCloseTab);
     on<BrowserSwitchTabRequested>(_onSwitchTab);
     on<BrowserCloseAllTabsRequested>(_onCloseAllTabs);
+    on<BrowserLoadStarted>(_onLoadStarted);
+    on<BrowserLoadEnded>(_onLoadEnded);
     on<BrowserBookmarkAdded>(_onBookmarkAdded);
     on<BrowserBookmarkRemoved>(_onBookmarkRemoved);
     on<BrowserBookmarkToggled>(_onBookmarkToggled);
@@ -97,6 +99,7 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
       currentUrl: initialUrl == AppConstants.homepageUrl ? '' : initialUrl,
       title: '',
       isHomePage: initialUrl == AppConstants.homepageUrl,
+      isLoading: false,
     );
   }
 
@@ -135,9 +138,11 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
       },
       onLoadStart: (c, url) {
         AppLogger.i("onLoadStart => $url");
+        add(BrowserLoadStarted(tabId: tabId));
       },
       onLoadEnd: (c, url) {
         AppLogger.i("onLoadEnd => $url");
+        add(BrowserLoadEnded(tabId: tabId));
       },
       // onBeforeDownload:
       //     (
@@ -217,6 +222,7 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
 
       final favorites = _bookmarkRepository!.getFavorites();
       final bookmarks = _bookmarkRepository!.getBookmarks();
+      final history = _historyRepository!.getHistory();
 
       emit(
         state.copyWith(
@@ -225,6 +231,7 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
           activeTabIndex: 0,
           favorites: favorites,
           bookmarks: bookmarks,
+          searchResults: history,
           isCurrentUrlBookmarked: false,
         ),
       );
@@ -605,6 +612,48 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
         targetUrl: isHome ? '' : event.url,
       );
     }
+
+    // Save URL changes to browser history
+    if (_historyRepository != null && !isHome) {
+      try {
+        final history = _historyRepository!.getHistory();
+        final now = DateTime.now().millisecondsSinceEpoch;
+        BrowserHistory? entryToSave;
+
+        if (history.isNotEmpty) {
+          final latest = history.first;
+          final elapsed = now - latest.timestamp;
+          if (elapsed < 1500) {
+            AppLogger.i('Redirect/rapid navigation detected (elapsed: ${elapsed}ms). Overwriting latest history entry from ${latest.url} to ${event.url}');
+            latest.url = event.url;
+            latest.timestamp = now;
+            entryToSave = latest;
+          }
+        }
+
+        if (entryToSave == null) {
+          AppLogger.i('Preparing to save new history entry for URL: ${event.url}');
+          entryToSave = BrowserHistory(
+            url: event.url,
+            title: '',
+            timestamp: now,
+          );
+        }
+
+        AppLogger.i('Saving history entry to database: url=${entryToSave.url}, title=${entryToSave.title}');
+        _historyRepository!.saveHistory(entryToSave);
+        AppLogger.i('Successfully saved history entry: url=${entryToSave.url}, title=${entryToSave.title}');
+
+        final updatedHistory = _historyRepository!.getHistory();
+        emit(state.copyWith(searchResults: updatedHistory));
+      } catch (e, stackTrace) {
+        AppLogger.e(
+          'Error saving history URL',
+          error: e,
+          stack: stackTrace,
+        );
+      }
+    }
   }
 
   /// Handler triggered when a tab's document title changes.
@@ -632,7 +681,12 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
           // Update the history title if the latest entry's URL matches the current tab URL
           if (latestUrlNorm.toLowerCase() == tabUrlNorm.toLowerCase()) {
             latest.title = event.title;
+            AppLogger.i('Preparing to update title for history entry: url=${latest.url}, new title=${latest.title}');
             _historyRepository!.saveHistory(latest);
+            AppLogger.i('Successfully updated title for history entry: url=${latest.url}, title=${latest.title}');
+
+            final updatedHistory = _historyRepository!.getHistory();
+            emit(state.copyWith(searchResults: updatedHistory));
           }
         }
       } catch (e, stackTrace) {
@@ -645,6 +699,30 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
     }
   }
 
+  void _onLoadStarted(BrowserLoadStarted event, Emitter<BrowserState> emit) {
+    final index = state.tabs.indexWhere((t) => t.id == event.tabId);
+    if (index == -1) return;
+
+    final updatedTab = state.tabs[index].copyWith(isLoading: true);
+
+    final updatedTabs = List<BrowserTab>.from(state.tabs);
+    updatedTabs[index] = updatedTab;
+
+    emit(state.copyWith(tabs: updatedTabs));
+  }
+
+  void _onLoadEnded(BrowserLoadEnded event, Emitter<BrowserState> emit) {
+    final index = state.tabs.indexWhere((t) => t.id == event.tabId);
+    if (index == -1) return;
+
+    final updatedTab = state.tabs[index].copyWith(isLoading: false);
+
+    final updatedTabs = List<BrowserTab>.from(state.tabs);
+    updatedTabs[index] = updatedTab;
+
+    emit(state.copyWith(tabs: updatedTabs));
+  }
+
   /// Handler to clear all browser history entries from persistent storage.
   Future<void> _onHistoryClearRequested(
     BrowserHistoryClearRequested event,
@@ -652,6 +730,7 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
   ) async {
     if (_historyRepository != null) {
       _historyRepository!.clearHistory();
+      emit(state.copyWith(searchResults: const []));
     }
   }
 

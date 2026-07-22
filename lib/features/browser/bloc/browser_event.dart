@@ -107,6 +107,22 @@ class BrowserBookmarkAdded extends BrowserEvent {
   List<Object?> get props => [url, label, type];
 }
 
+class BrowserLoadStarted extends BrowserEvent {
+  final String tabId;
+  const BrowserLoadStarted({required this.tabId});
+
+  @override
+  List<Object?> get props => [tabId];
+}
+
+class BrowserLoadEnded extends BrowserEvent {
+  final String tabId;
+  const BrowserLoadEnded({required this.tabId});
+
+  @override
+  List<Object?> get props => [tabId];
+}
+
 class BrowserBookmarkRemoved extends BrowserEvent {
   final int id;
   final BookmarkType type;
@@ -126,5 +142,3 @@ class BrowserBookmarkToggled extends BrowserEvent {
   @override
   List<Object?> get props => [url, title];
 }
-
-
