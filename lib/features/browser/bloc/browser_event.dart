@@ -111,10 +111,7 @@ class BrowserBookmarkRemoved extends BrowserEvent {
   final int id;
   final BookmarkType type;
 
-  const BrowserBookmarkRemoved({
-    required this.id,
-    required this.type,
-  });
+  const BrowserBookmarkRemoved({required this.id, required this.type});
 
   @override
   List<Object?> get props => [id, type];
@@ -124,11 +121,10 @@ class BrowserBookmarkToggled extends BrowserEvent {
   final String url;
   final String? title;
 
-  const BrowserBookmarkToggled({
-    required this.url,
-    this.title,
-  });
+  const BrowserBookmarkToggled({required this.url, this.title});
 
   @override
   List<Object?> get props => [url, title];
 }
+
+

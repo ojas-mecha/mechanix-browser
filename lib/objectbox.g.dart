@@ -225,11 +225,13 @@ obx_int.ModelDefinition getObjectBoxModel() {
       },
       objectToFB: (Bookmark object, fb.Builder fbb) {
         final urlOffset = fbb.writeString(object.url);
-        final iconUrlOffset =
-            object.iconUrl == null ? null : fbb.writeString(object.iconUrl!);
+        final iconUrlOffset = object.iconUrl == null
+            ? null
+            : fbb.writeString(object.iconUrl!);
         final typeStringOffset = fbb.writeString(object.typeString);
-        final titleOffset =
-            object.title == null ? null : fbb.writeString(object.title!);
+        final titleOffset = object.title == null
+            ? null
+            : fbb.writeString(object.title!);
         fbb.startTable(8);
         fbb.addInt64(0, object.id);
         fbb.addOffset(1, urlOffset);

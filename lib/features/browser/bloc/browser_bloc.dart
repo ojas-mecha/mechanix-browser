@@ -3,14 +3,17 @@ import 'dart:async';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+// import 'package:mechanix_browser/features/browser/download/bloc/download_bloc.dart';
+// import 'package:mechanix_browser/features/browser/download/bloc/download_event.dart';
+import 'package:mechanix_browser/core/utils/app_logger.dart';
 import 'package:mechanix_browser/core/utils/constants.dart';
+import 'package:mechanix_browser/core/utils/helpers.dart';
 import 'package:mechanix_browser/features/browser/data/models/bookmark.dart';
 import 'package:mechanix_browser/features/browser/data/models/browser_history.dart';
 import 'package:mechanix_browser/features/browser/data/models/browser_tab.dart';
 import 'package:mechanix_browser/features/browser/data/repositories/bookmark_repository.dart';
 import 'package:mechanix_browser/features/browser/data/repositories/history_repository.dart';
-// import 'package:mechanix_browser/features/browser/download/bloc/download_bloc.dart';
-// import 'package:mechanix_browser/features/browser/download/bloc/download_event.dart';
+import 'package:mechanix_browser/features/browser/data/repositories/history_repository_impl.dart';
 import 'package:webview_cef/webview_cef.dart';
 
 part 'browser_event.dart';
@@ -114,7 +117,7 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
           JavascriptChannel(
             name: 'Print',
             onMessageReceived: (JavascriptMessage message) {
-              debugPrint(message.message);
+              AppLogger.i(message.message);
               controller.sendJavaScriptChannelCallBack(
                 false,
                 "{'code':'200','message':'print succeed!'}",
@@ -128,13 +131,13 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
         controller.executeJavaScript("function abc(e){return 'abc:'+ e}");
         controller
             .evaluateJavascript("abc('test')")
-            .then((value) => debugPrint(value));
+            .then((value) => AppLogger.i(value));
       },
       onLoadStart: (c, url) {
-        debugPrint("onLoadStart => $url");
+        AppLogger.i("onLoadStart => $url");
       },
       onLoadEnd: (c, url) {
-        debugPrint("onLoadEnd => $url");
+        AppLogger.i("onLoadEnd => $url");
       },
       // onBeforeDownload:
       //     (
@@ -203,10 +206,8 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
     Emitter<BrowserState> emit,
   ) async {
     try {
-      _historyRepository = await HistoryRepository.create();
-      _bookmarkRepository = await BookmarkRepository.create(
-        store: _historyRepository!.store,
-      );
+      _historyRepository = HistoryRepositoryImpl();
+      _bookmarkRepository = BookmarkRepository();
 
       await WebviewManager().initialize(
         userAgent: AppConstants.defaultUserAgent,
@@ -228,7 +229,7 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
         ),
       );
     } catch (e) {
-      debugPrint("Webview initialization error: $e");
+      AppLogger.i("Webview initialization error: $e");
     }
   }
 
@@ -617,6 +618,31 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
     updatedTabs[index] = updatedTab;
 
     emit(state.copyWith(tabs: updatedTabs));
+
+    // Update the corresponding history entry's title if history is enabled and title is non-empty
+    if (_historyRepository != null && event.title.isNotEmpty) {
+      try {
+        final history = _historyRepository!.getHistory();
+        if (history.isNotEmpty) {
+          final latest = history.first;
+          // Normalize URLs to remove trailing slashes for precise comparison
+          final latestUrlNorm = normalizeUrl(latest.url);
+          final tabUrlNorm = normalizeUrl(updatedTab.currentUrl);
+
+          // Update the history title if the latest entry's URL matches the current tab URL
+          if (latestUrlNorm.toLowerCase() == tabUrlNorm.toLowerCase()) {
+            latest.title = event.title;
+            _historyRepository!.saveHistory(latest);
+          }
+        }
+      } catch (e, stackTrace) {
+        AppLogger.e(
+          'Error updating history title',
+          error: e,
+          stack: stackTrace,
+        );
+      }
+    }
   }
 
   /// Handler to clear all browser history entries from persistent storage.
