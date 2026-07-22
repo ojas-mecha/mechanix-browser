@@ -18,16 +18,24 @@ part 'browser_state.dart';
 
 class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
   // final DownloadBloc? downloadBloc;
+
+  /// Repository managing local browser history persistency.
   HistoryRepository? _historyRepository;
+
+  /// Repository managing local bookmarks persistency.
   BookmarkRepository? _bookmarkRepository;
+
+  /// Local incremental counter for unique tab ID generation.
   int _tabIdCounter = 0;
 
+  /// Gets the [WebViewController] associated with the active tab.
   WebViewController get controller {
     final tab = state.activeTab;
     if (tab != null) return tab.controller;
     throw StateError("No active tab controller available.");
   }
 
+  /// Initializes a new instance of [BrowserBloc] and registers the event handlers.
   // BrowserBloc({this.downloadBloc}) : super(BrowserState.initial()) {
   BrowserBloc() : super(BrowserState.initial()) {
     on<BrowserInitialized>(_onInitialized);
@@ -51,6 +59,9 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
     on<BrowserHistoryClearRequested>(_onHistoryClearRequested);
   }
 
+  /// Creates a new tab instance with the specified [initialUrl].
+  /// Sets up Javascript inject user scripts, instantiates a new CEF webview controller,
+  /// attaches event listeners, and initializes the loading of the URL.
   BrowserTab _createNewTab(String initialUrl) {
     final injectUserScripts = InjectUserScripts();
     injectUserScripts.add(
@@ -86,6 +97,8 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
     );
   }
 
+  /// Creates and configures a [WebviewEventsListener] for the specified tab ID.
+  /// Sets up javascript communication channels and propagates load states, title, and url events to the bloc.
   WebviewEventsListener _createEventListenerForTab(
     String tabId,
     WebViewController controller,
@@ -182,6 +195,9 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
     );
   }
 
+  /// Handler for the [BrowserInitialized] event.
+  /// Asynchronously initializes database repositories (history, bookmarks)
+  /// and the global CEF Webview manager instance, and sets up the first home tab.
   Future<void> _onInitialized(
     BrowserInitialized event,
     Emitter<BrowserState> emit,
@@ -216,6 +232,7 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
     }
   }
 
+  /// Reloads bookmarks and favorites list from repository and updates the current active page bookmark status.
   void _refreshFullBookmarksAndFavorites(Emitter<BrowserState> emit) {
     if (_bookmarkRepository == null) return;
 
@@ -238,6 +255,7 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
     );
   }
 
+  /// Evaluates and updates the bookmark status indicator of the current page.
   void _updateCurrentPageBookmarkStatus(
     Emitter<BrowserState> emit, {
     String? targetUrl,
@@ -255,6 +273,7 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
     emit(state.copyWith(isCurrentUrlBookmarked: isBookmarked));
   }
 
+  /// Handler to add or update a bookmark entry in the repository.
   Future<void> _onBookmarkAdded(
     BrowserBookmarkAdded event,
     Emitter<BrowserState> emit,
@@ -275,6 +294,7 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
     _refreshFullBookmarksAndFavorites(emit);
   }
 
+  /// Handler to remove a bookmark by its ID from the repository.
   Future<void> _onBookmarkRemoved(
     BrowserBookmarkRemoved event,
     Emitter<BrowserState> emit,
@@ -285,6 +305,7 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
     _refreshFullBookmarksAndFavorites(emit);
   }
 
+  /// Handler to toggle the bookmark status of the specified URL.
   Future<void> _onBookmarkToggled(
     BrowserBookmarkToggled event,
     Emitter<BrowserState> emit,
@@ -312,6 +333,8 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
     _refreshFullBookmarksAndFavorites(emit);
   }
 
+  /// Handler to spawn a new browser tab with an optional [initialUrl].
+  /// Safely unfocuses the current tab and manages tab list and active index updates.
   Future<void> _onNewTabRequested(
     BrowserNewTabRequested event,
     Emitter<BrowserState> emit,
@@ -344,6 +367,7 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
     });
   }
 
+  /// Handler to close a specific browser tab specified by index.
   Future<void> _onCloseTab(
     BrowserCloseTabRequested event,
     Emitter<BrowserState> emit,
@@ -351,6 +375,7 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
     final index = event.index;
     if (index < 0 || index >= state.tabs.length) return;
 
+    /// If only one tab remains, it resets it to the homepage instead of closing.
     if (state.tabs.length == 1) {
       final activeTab = state.tabs[index];
       final updatedTab = activeTab.copyWith(
@@ -366,11 +391,13 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
       return;
     }
 
+    /// more than one tab find that tab and dispose it controller
     final tabToClose = state.tabs[index];
     await tabToClose.controller.dispose();
 
     final updatedTabs = List<BrowserTab>.from(state.tabs)..removeAt(index);
 
+    /// find new active tab
     int newActiveIndex = state.activeTabIndex;
     if (index == state.activeTabIndex) {
       if (newActiveIndex >= updatedTabs.length) {
@@ -385,6 +412,7 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
     final newActiveTab = updatedTabs[newActiveIndex];
     _updateCurrentPageBookmarkStatus(emit, targetUrl: newActiveTab.currentUrl);
 
+    /// focus new tab when new tab ready
     if (newActiveTab.controller.value) {
       await newActiveTab.controller.setClientFocus(true);
     } else {
@@ -398,6 +426,7 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
     }
   }
 
+  /// Handler to switch the current view/focus to another tab at the specified index.
   Future<void> _onSwitchTab(
     BrowserSwitchTabRequested event,
     Emitter<BrowserState> emit,
@@ -411,6 +440,7 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
 
     if (oldTab != null) {
       if (oldTab.controller.value) {
+        /// old tab loose focus
         await oldTab.controller.setClientFocus(false);
         await oldTab.controller.executeJavaScript(
           "document.dispatchEvent(new Event('visibilitychange'))",
@@ -421,6 +451,7 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
     emit(state.copyWith(activeTabIndex: index));
     _updateCurrentPageBookmarkStatus(emit, targetUrl: newTab.currentUrl);
 
+    /// new tab get focus
     if (newTab.controller.value) {
       await newTab.controller.setClientFocus(true);
     } else {
@@ -433,6 +464,7 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
     }
   }
 
+  /// Handler to dispose of all existing tabs and replace them with a single clean home tab.
   Future<void> _onCloseAllTabs(
     BrowserCloseAllTabsRequested event,
     Emitter<BrowserState> emit,
@@ -454,6 +486,8 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
     });
   }
 
+  /// Handler to load a new URL in the active tab.
+  /// Parses the input string as a URL or executes a search engine query if not a valid URL.
   Future<void> _onUrlLoadRequested(
     BrowserUrlLoadRequested event,
     Emitter<BrowserState> emit,
@@ -465,6 +499,7 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
 
     final isUri = Uri.tryParse(event.url.trim())?.isAbsolute;
 
+    /// check uri is correct or search
     if (!isUri!) {
       if (finalUrl.contains('.') && !finalUrl.contains(' ')) {
         finalUrl = '${AppConstants.defaultScheme}$finalUrl';
@@ -547,6 +582,8 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
     }
   }
 
+  /// Handler triggered when a tab's URL changes.
+  /// Updates the tab's state and checks if the new URL is bookmarked.
   void _onUrlChanged(BrowserUrlChanged event, Emitter<BrowserState> emit) {
     final index = state.tabs.indexWhere((t) => t.id == event.tabId);
     if (index == -1) return;
@@ -569,6 +606,7 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
     }
   }
 
+  /// Handler triggered when a tab's document title changes.
   void _onTitleChanged(BrowserTitleChanged event, Emitter<BrowserState> emit) {
     final index = state.tabs.indexWhere((t) => t.id == event.tabId);
     if (index == -1) return;
@@ -581,6 +619,7 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
     emit(state.copyWith(tabs: updatedTabs));
   }
 
+  /// Handler to clear all browser history entries from persistent storage.
   Future<void> _onHistoryClearRequested(
     BrowserHistoryClearRequested event,
     Emitter<BrowserState> emit,
@@ -590,6 +629,8 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
     }
   }
 
+  /// Handler triggered when the search/URL query changes.
+  /// Filters the history entries matching the query and updates search results.
   void _onSearchQueryChanged(
     BrowserSearchQueryChanged event,
     Emitter<BrowserState> emit,
@@ -616,6 +657,7 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
     emit(state.copyWith(searchResults: uniqueResults));
   }
 
+  /// Handler to delete a specific history item and refresh the search result lists.
   void _onHistoryItemDeleted(
     BrowserHistoryItemDeleted event,
     Emitter<BrowserState> emit,
@@ -643,6 +685,7 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
     }
   }
 
+  /// Clean up and dispose of CEF webviews, repositories, and resources.
   @override
   Future<void> close() async {
     for (final tab in state.tabs) {
