@@ -3,7 +3,10 @@ import 'dart:async';
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mechanix_browser/core/utils/app_logger.dart';
 import 'package:mechanix_browser/core/utils/constants.dart';
+import 'package:mechanix_browser/core/utils/helpers.dart';
+import 'package:mechanix_browser/features/browser/bloc/download/download_bloc.dart';
 import 'package:mechanix_browser/features/browser/data/models/bookmark.dart';
 import 'package:mechanix_browser/features/browser/data/models/browser_history.dart';
 import 'package:mechanix_browser/features/browser/data/models/browser_tab.dart';
@@ -11,6 +14,7 @@ import 'package:mechanix_browser/features/browser/data/repositories/bookmark_rep
 import 'package:mechanix_browser/features/browser/data/repositories/history_repository.dart';
 // import 'package:mechanix_browser/features/browser/download/bloc/download_bloc.dart';
 // import 'package:mechanix_browser/features/browser/download/bloc/download_event.dart';
+import 'package:mechanix_browser/features/browser/data/repositories/history_repository_impl.dart';
 import 'package:webview_cef/webview_cef.dart';
 
 part 'browser_event.dart';
@@ -18,6 +22,7 @@ part 'browser_state.dart';
 
 class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
   // final DownloadBloc? downloadBloc;
+  final DownloadBloc? downloadBloc;
 
   /// Repository managing local browser history persistency.
   HistoryRepository? _historyRepository;
@@ -36,8 +41,7 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
   }
 
   /// Initializes a new instance of [BrowserBloc] and registers the event handlers.
-  // BrowserBloc({this.downloadBloc}) : super(BrowserState.initial()) {
-  BrowserBloc() : super(BrowserState.initial()) {
+  BrowserBloc({this.downloadBloc}) : super(BrowserState.initial()) {
     on<BrowserInitialized>(_onInitialized);
     on<BrowserUrlLoadRequested>(_onUrlLoadRequested);
     on<BrowserGoBackRequested>(_onGoBack);
@@ -115,7 +119,7 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
           JavascriptChannel(
             name: 'Print',
             onMessageReceived: (JavascriptMessage message) {
-              debugPrint(message.message);
+              AppLogger.i(message.message);
               controller.sendJavaScriptChannelCallBack(
                 false,
                 "{'code':'200','message':'print succeed!'}",
@@ -129,70 +133,72 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
         controller.executeJavaScript("function abc(e){return 'abc:'+ e}");
         controller
             .evaluateJavascript("abc('test')")
-            .then((value) => debugPrint(value));
+            .then((value) => AppLogger.i(value));
       },
       onLoadStart: (c, url) {
-        debugPrint("onLoadStart => $url");
+        AppLogger.i("onLoadStart => $url");
+        add(BrowserLoadStarted(tabId: tabId));
       },
       onLoadEnd: (c, url) {
-        debugPrint("onLoadEnd => $url");
+        AppLogger.i("onLoadEnd => $url");
+        add(BrowserLoadEnded(tabId: tabId));
       },
-      // onBeforeDownload:
-      //     (
-      //       c,
-      //       downloadId,
-      //       url,
-      //       suggestedName,
-      //       contentDisposition,
-      //       mimeType,
-      //       totalBytes,
-      //     ) {
-      //       downloadBloc?.add(
-      //         DownloadBeforeStarted(
-      //           controller: c,
-      //           downloadId: downloadId,
-      //           url: url,
-      //           suggestedName: suggestedName,
-      //           contentDisposition: contentDisposition,
-      //           mimeType: mimeType,
-      //           totalBytes: totalBytes,
-      //         ),
-      //       );
-      //     },
-      // onDownloadUpdated:
-      //     (
-      //       c,
-      //       downloadId,
-      //       url,
-      //       fullPath,
-      //       receivedBytes,
-      //       totalBytes,
-      //       currentSpeed,
-      //       percentComplete,
-      //       isInProgress,
-      //       isComplete,
-      //       isCanceled,
-      //       isInterrupted,
-      //       interruptReason,
-      //     ) {
-      //       downloadBloc?.add(
-      //         DownloadUpdatedEvent(
-      //           controller: c,
-      //           downloadId: downloadId,
-      //           url: url,
-      //           fullPath: fullPath,
-      //           receivedBytes: receivedBytes,
-      //           totalBytes: totalBytes,
-      //           currentSpeed: currentSpeed,
-      //           percentComplete: percentComplete,
-      //           isInProgress: isInProgress,
-      //           isComplete: isComplete,
-      //           isCanceled: isCanceled,
-      //           isInterrupted: isInterrupted,
-      //           interruptReason: interruptReason,
-      //         ),
-      //       );
-      //     },
+      onBeforeDownload:
+          (
+            c,
+            downloadId,
+            url,
+            suggestedName,
+            contentDisposition,
+            mimeType,
+            totalBytes,
+          ) {
+            downloadBloc?.add(
+              DownloadBeforeStarted(
+                controller: c,
+                downloadId: downloadId,
+                url: url,
+                suggestedName: suggestedName,
+                contentDisposition: contentDisposition,
+                mimeType: mimeType,
+                totalBytes: totalBytes,
+              ),
+            );
+          },
+      onDownloadUpdated:
+          (
+            c,
+            downloadId,
+            url,
+            fullPath,
+            receivedBytes,
+            totalBytes,
+            currentSpeed,
+            percentComplete,
+            isInProgress,
+            isComplete,
+            isCanceled,
+            isInterrupted,
+            interruptReason,
+          ) {
+            downloadBloc?.add(
+              DownloadUpdatedEvent(
+                controller: c,
+                downloadId: downloadId,
+                url: url,
+                fullPath: fullPath,
+                receivedBytes: receivedBytes,
+                totalBytes: totalBytes,
+                currentSpeed: currentSpeed,
+                percentComplete: percentComplete,
+                isInProgress: isInProgress,
+                isComplete: isComplete,
+                isCanceled: isCanceled,
+                isInterrupted: isInterrupted,
+                interruptReason: interruptReason,
+              ),
+            );
+          },
     );
   }
 
@@ -204,10 +210,8 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
     Emitter<BrowserState> emit,
   ) async {
     try {
-      _historyRepository = await HistoryRepository.create();
-      _bookmarkRepository = await BookmarkRepository.create(
-        store: _historyRepository!.store,
-      );
+      _historyRepository = HistoryRepositoryImpl();
+      _bookmarkRepository = BookmarkRepository();
 
       await WebviewManager().initialize(
         userAgent: AppConstants.defaultUserAgent,
@@ -217,6 +221,7 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
 
       final favorites = _bookmarkRepository!.getFavorites();
       final bookmarks = _bookmarkRepository!.getBookmarks();
+      final history = _historyRepository!.getHistory();
 
       emit(
         state.copyWith(
@@ -225,11 +230,12 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
           activeTabIndex: 0,
           favorites: favorites,
           bookmarks: bookmarks,
+          searchResults: history,
           isCurrentUrlBookmarked: false,
         ),
       );
     } catch (e) {
-      debugPrint("Webview initialization error: $e");
+      AppLogger.i("Webview initialization error: $e");
     }
   }
 
@@ -615,6 +621,52 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
         targetUrl: isHome ? '' : event.url,
       );
     }
+
+    // Save URL changes to browser history
+    if (_historyRepository != null && !isHome) {
+      try {
+        final history = _historyRepository!.getHistory();
+        final now = DateTime.now().millisecondsSinceEpoch;
+        BrowserHistory? entryToSave;
+
+        if (history.isNotEmpty) {
+          final latest = history.first;
+          final elapsed = now - latest.timestamp;
+          if (elapsed < 1500) {
+            AppLogger.i(
+              'Redirect/rapid navigation detected (elapsed: ${elapsed}ms). Overwriting latest history entry from ${latest.url} to ${event.url}',
+            );
+            latest.url = event.url;
+            latest.timestamp = now;
+            entryToSave = latest;
+          }
+        }
+
+        if (entryToSave == null) {
+          AppLogger.i(
+            'Preparing to save new history entry for URL: ${event.url}',
+          );
+          entryToSave = BrowserHistory(
+            url: event.url,
+            title: '',
+            timestamp: now,
+          );
+        }
+
+        AppLogger.i(
+          'Saving history entry to database: url=${entryToSave.url}, title=${entryToSave.title}',
+        );
+        _historyRepository!.saveHistory(entryToSave);
+        AppLogger.i(
+          'Successfully saved history entry: url=${entryToSave.url}, title=${entryToSave.title}',
+        );
+
+        final updatedHistory = _historyRepository!.getHistory();
+        emit(state.copyWith(searchResults: updatedHistory));
+      } catch (e, stackTrace) {
+        AppLogger.e('Error saving history URL', error: e, stack: stackTrace);
+      }
+    }
   }
 
   /// Handler triggered when a tab's document title changes.
@@ -623,6 +675,64 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
     if (index == -1) return;
 
     final updatedTab = state.tabs[index].copyWith(title: event.title);
+
+    final updatedTabs = List<BrowserTab>.from(state.tabs);
+    updatedTabs[index] = updatedTab;
+
+    emit(state.copyWith(tabs: updatedTabs));
+
+    // Update the corresponding history entry's title if history is enabled and title is non-empty
+    if (_historyRepository != null && event.title.isNotEmpty) {
+      try {
+        final history = _historyRepository!.getHistory();
+        if (history.isNotEmpty) {
+          final latest = history.first;
+          // Normalize URLs to remove trailing slashes for precise comparison
+          final latestUrlNorm = normalizeUrl(latest.url);
+          final tabUrlNorm = normalizeUrl(updatedTab.currentUrl);
+
+          // Update the history title if the latest entry's URL matches the current tab URL
+          if (latestUrlNorm.toLowerCase() == tabUrlNorm.toLowerCase()) {
+            latest.title = event.title;
+            AppLogger.i(
+              'Preparing to update title for history entry: url=${latest.url}, new title=${latest.title}',
+            );
+            _historyRepository!.saveHistory(latest);
+            AppLogger.i(
+              'Successfully updated title for history entry: url=${latest.url}, title=${latest.title}',
+            );
+
+            final updatedHistory = _historyRepository!.getHistory();
+            emit(state.copyWith(searchResults: updatedHistory));
+          }
+        }
+      } catch (e, stackTrace) {
+        AppLogger.e(
+          'Error updating history title',
+          error: e,
+          stack: stackTrace,
+        );
+      }
+    }
+  }
+
+  void _onLoadStarted(BrowserLoadStarted event, Emitter<BrowserState> emit) {
+    final index = state.tabs.indexWhere((t) => t.id == event.tabId);
+    if (index == -1) return;
+
+    final updatedTab = state.tabs[index].copyWith(isLoading: true);
+
+    final updatedTabs = List<BrowserTab>.from(state.tabs);
+    updatedTabs[index] = updatedTab;
+
+    emit(state.copyWith(tabs: updatedTabs));
+  }
+
+  void _onLoadEnded(BrowserLoadEnded event, Emitter<BrowserState> emit) {
+    final index = state.tabs.indexWhere((t) => t.id == event.tabId);
+    if (index == -1) return;
+
+    final updatedTab = state.tabs[index].copyWith(isLoading: false);
 
     final updatedTabs = List<BrowserTab>.from(state.tabs);
     updatedTabs[index] = updatedTab;
@@ -637,6 +747,7 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
   ) async {
     if (_historyRepository != null) {
       _historyRepository!.clearHistory();
+      emit(state.copyWith(searchResults: const []));
     }
   }
 

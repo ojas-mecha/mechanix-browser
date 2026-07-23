@@ -7,8 +7,7 @@ class BrowserTab extends Equatable {
   final String currentUrl;
   final String title;
   final bool isHomePage;
-
-  final bool isPrivate;
+  final bool isLoading;
 
   const BrowserTab({
     required this.id,
@@ -16,7 +15,7 @@ class BrowserTab extends Equatable {
     required this.currentUrl,
     required this.title,
     required this.isHomePage,
-    this.isPrivate = false,
+    required this.isLoading,
   });
 
   BrowserTab copyWith({
@@ -25,7 +24,7 @@ class BrowserTab extends Equatable {
     String? currentUrl,
     String? title,
     bool? isHomePage,
-    bool? isPrivate,
+    bool? isLoading,
   }) {
     return BrowserTab(
       id: id ?? this.id,
@@ -33,10 +32,17 @@ class BrowserTab extends Equatable {
       currentUrl: currentUrl ?? this.currentUrl,
       title: title ?? this.title,
       isHomePage: isHomePage ?? this.isHomePage,
-      isPrivate: isPrivate ?? this.isPrivate,
+      isLoading: isLoading ?? this.isLoading,
     );
   }
 
   @override
-  List<Object?> get props => [id, controller, currentUrl, title, isHomePage, isPrivate];
+  List<Object?> get props => [
+    id,
+    controller,
+    currentUrl,
+    title,
+    isHomePage,
+    isLoading,
+  ];
 }
