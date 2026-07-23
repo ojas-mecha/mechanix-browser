@@ -425,19 +425,23 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
       final newActiveIndex = updatedTabs.length - 1;
 
       if (isPrivate) {
-        emit(state.copyWith(
-          mode: BrowserMode.private,
-          tabSwitcherMode: BrowserMode.private,
-          privateTabs: updatedTabs,
-          activePrivateTabIndex: newActiveIndex,
-        ));
+        emit(
+          state.copyWith(
+            mode: BrowserMode.private,
+            tabSwitcherMode: BrowserMode.private,
+            privateTabs: updatedTabs,
+            activePrivateTabIndex: newActiveIndex,
+          ),
+        );
       } else {
-        emit(state.copyWith(
-          mode: BrowserMode.normal,
-          tabSwitcherMode: BrowserMode.normal,
-          normalTabs: updatedTabs,
-          activeNormalTabIndex: newActiveIndex,
-        ));
+        emit(
+          state.copyWith(
+            mode: BrowserMode.normal,
+            tabSwitcherMode: BrowserMode.normal,
+            normalTabs: updatedTabs,
+            activeNormalTabIndex: newActiveIndex,
+          ),
+        );
         _persistTabs();
       }
 
@@ -464,7 +468,9 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
       final tabId = event.tabId;
       final isPrivate = state.privateTabs.any((t) => t.id == tabId);
       final tabsList = isPrivate ? state.privateTabs : state.normalTabs;
-      final activeIndex = isPrivate ? state.activePrivateTabIndex : state.activeNormalTabIndex;
+      final activeIndex = isPrivate
+          ? state.activePrivateTabIndex
+          : state.activeNormalTabIndex;
 
       final index = tabsList.indexWhere((t) => t.id == tabId);
       if (index == -1) return;
@@ -475,10 +481,9 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
         if (isPrivate) {
           // For private tabs, closing the last one makes the collection empty and displays the private home splash page.
           await activeTab.controller.dispose();
-          emit(state.copyWith(
-            privateTabs: const [],
-            activePrivateTabIndex: -1,
-          ));
+          emit(
+            state.copyWith(privateTabs: const [], activePrivateTabIndex: -1),
+          );
           if (state.mode == BrowserMode.private) {
             _updateCurrentPageBookmarkStatus(emit, targetUrl: '');
           }
@@ -489,7 +494,9 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
             currentUrl: '',
             title: '',
           );
-          emit(state.copyWith(normalTabs: [updatedTab], activeNormalTabIndex: 0));
+          emit(
+            state.copyWith(normalTabs: [updatedTab], activeNormalTabIndex: 0),
+          );
           if (state.mode == BrowserMode.normal) {
             _updateCurrentPageBookmarkStatus(emit, targetUrl: '');
           }
@@ -517,28 +524,39 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
       }
 
       if (isPrivate) {
-        emit(state.copyWith(
-          privateTabs: updatedTabs,
-          activePrivateTabIndex: newActiveIndex,
-        ));
+        emit(
+          state.copyWith(
+            privateTabs: updatedTabs,
+            activePrivateTabIndex: newActiveIndex,
+          ),
+        );
       } else {
-        emit(state.copyWith(
-          normalTabs: updatedTabs,
-          activeNormalTabIndex: newActiveIndex,
-        ));
+        emit(
+          state.copyWith(
+            normalTabs: updatedTabs,
+            activeNormalTabIndex: newActiveIndex,
+          ),
+        );
         _persistTabs();
       }
 
-      final currentTargetTabs = isPrivate ? state.privateTabs : state.normalTabs;
+      final currentTargetTabs = isPrivate
+          ? state.privateTabs
+          : state.normalTabs;
       if (newActiveIndex >= 0 && newActiveIndex < currentTargetTabs.length) {
         final newActiveTab = currentTargetTabs[newActiveIndex];
-        if (state.mode == (isPrivate ? BrowserMode.private : BrowserMode.normal)) {
-          _updateCurrentPageBookmarkStatus(emit, targetUrl: newActiveTab.currentUrl);
+        if (state.mode ==
+            (isPrivate ? BrowserMode.private : BrowserMode.normal)) {
+          _updateCurrentPageBookmarkStatus(
+            emit,
+            targetUrl: newActiveTab.currentUrl,
+          );
         }
 
         /// focus new tab when ready
         if (newActiveTab.controller.value) {
           await newActiveTab.controller.setClientFocus(true);
+          await newActiveTab.controller.wasHidden(false);
         } else {
           newActiveTab.controller.ready.then((_) async {
             final currentActiveTab = state.activeTab;
@@ -564,7 +582,9 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
       final tabId = event.tabId;
       final isPrivate = state.privateTabs.any((t) => t.id == tabId);
       final tabsList = isPrivate ? state.privateTabs : state.normalTabs;
-      final activeIndex = isPrivate ? state.activePrivateTabIndex : state.activeNormalTabIndex;
+      final activeIndex = isPrivate
+          ? state.activePrivateTabIndex
+          : state.activeNormalTabIndex;
 
       final index = tabsList.indexWhere((t) => t.id == tabId);
       if (index == -1) return;
@@ -586,17 +606,21 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
       }
 
       if (isPrivate) {
-        emit(state.copyWith(
-          mode: targetMode,
-          activePrivateTabIndex: index,
-          tabSwitcherMode: targetMode,
-        ));
+        emit(
+          state.copyWith(
+            mode: targetMode,
+            activePrivateTabIndex: index,
+            tabSwitcherMode: targetMode,
+          ),
+        );
       } else {
-        emit(state.copyWith(
-          mode: targetMode,
-          activeNormalTabIndex: index,
-          tabSwitcherMode: targetMode,
-        ));
+        emit(
+          state.copyWith(
+            mode: targetMode,
+            activeNormalTabIndex: index,
+            tabSwitcherMode: targetMode,
+          ),
+        );
       }
 
       _updateCurrentPageBookmarkStatus(emit, targetUrl: newTab.currentUrl);
@@ -636,17 +660,11 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
       }
 
       if (isPrivate) {
-        emit(state.copyWith(
-          privateTabs: const [],
-          activePrivateTabIndex: -1,
-        ));
+        emit(state.copyWith(privateTabs: const [], activePrivateTabIndex: -1));
         _updateCurrentPageBookmarkStatus(emit, targetUrl: '');
       } else {
         final firstTab = _createNewTab(AppConstants.homepageUrl);
-        emit(state.copyWith(
-          normalTabs: [firstTab],
-          activeNormalTabIndex: 0,
-        ));
+        emit(state.copyWith(normalTabs: [firstTab], activeNormalTabIndex: 0));
         _updateCurrentPageBookmarkStatus(emit, targetUrl: '');
         _persistTabs();
 
@@ -716,7 +734,9 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
 
       final isPrivate = activeTab.isPrivate;
       final tabsList = isPrivate ? state.privateTabs : state.normalTabs;
-      final activeIndex = isPrivate ? state.activePrivateTabIndex : state.activeNormalTabIndex;
+      final activeIndex = isPrivate
+          ? state.activePrivateTabIndex
+          : state.activeNormalTabIndex;
 
       final updatedTabs = List<BrowserTab>.from(tabsList);
       updatedTabs[activeIndex] = updatedTab;
@@ -804,7 +824,9 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
 
         final isPrivate = activeTab.isPrivate;
         final tabsList = isPrivate ? state.privateTabs : state.normalTabs;
-        final activeIndex = isPrivate ? state.activePrivateTabIndex : state.activeNormalTabIndex;
+        final activeIndex = isPrivate
+            ? state.activePrivateTabIndex
+            : state.activeNormalTabIndex;
 
         final updatedTabs = List<BrowserTab>.from(tabsList);
         updatedTabs[activeIndex] = updatedTab;
@@ -838,7 +860,9 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
     if (index == -1) return;
 
     final tabsList = isPrivate ? state.privateTabs : state.normalTabs;
-    final activeIndex = isPrivate ? state.activePrivateTabIndex : state.activeNormalTabIndex;
+    final activeIndex = isPrivate
+        ? state.activePrivateTabIndex
+        : state.activeNormalTabIndex;
 
     final isHome = event.url == AppConstants.homepageUrl || event.url.isEmpty;
     final updatedTab = tabsList[index].copyWith(
