@@ -22,9 +22,11 @@ class HistoryRepositoryImpl implements HistoryRepository {
           (historyBox.query()
                 ..order(BrowserHistory_.timestamp, flags: Order.descending))
               .build();
-      final results = query.find();
-      query.close();
-      return results;
+      try {
+        return query.find();
+      } finally {
+        query.close();
+      }
     } catch (e, stackTrace) {
       AppLogger.i('Unable to load history: $e');
       AppLogger.i(stackTrace.toString());
@@ -74,9 +76,11 @@ class HistoryRepositoryImpl implements HistoryRepository {
             .contains(queryText, caseSensitive: false)
             .or(BrowserHistory_.url.contains(queryText, caseSensitive: false)),
       )..order(BrowserHistory_.timestamp, flags: Order.descending)).build();
-      final results = query.find();
-      query.close();
-      return results;
+      try {
+        return query.find();
+      } finally {
+        query.close();
+      }
     } catch (e, stackTrace) {
       AppLogger.i('Unable to search history: $e');
       AppLogger.i(stackTrace.toString());
