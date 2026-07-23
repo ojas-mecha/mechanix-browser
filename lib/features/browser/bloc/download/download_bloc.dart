@@ -189,6 +189,12 @@ class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
         lastStartedOrUpdated: updatedDownload,
       ),
     );
+
+    if (status == DownloadStatus.completed ||
+        status == DownloadStatus.failed ||
+        status == DownloadStatus.cancelled) {
+      _controllerMap.remove(event.downloadId);
+    }
   }
 
   /// Cancels an active download.
@@ -202,6 +208,7 @@ class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
     if (controller != null) {
       await controller.cancelDownload(event.downloadId);
     }
+    _controllerMap.remove(event.downloadId);
 
     final index = state.downloads.indexWhere(
       (d) => d.downloadId == event.downloadId,
@@ -326,5 +333,11 @@ class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
       default:
         return 'Network error';
     }
+  }
+
+  @override
+  Future<void> close() async {
+    _controllerMap.clear();
+    return super.close();
   }
 }
