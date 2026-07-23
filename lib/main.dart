@@ -6,6 +6,7 @@ import 'package:mechanix_browser/core/routes/app_routes.dart';
 import 'package:mechanix_browser/core/services/objectbox_service.dart';
 import 'package:mechanix_browser/core/utils/app_theme.dart';
 import 'package:mechanix_browser/features/browser/bloc/browser_bloc.dart';
+import 'package:mechanix_browser/features/browser/bloc/download/download_bloc.dart';
 import 'package:mechanix_browser/features/browser/bloc/history/history_bloc.dart';
 import 'package:mechanix_browser/features/browser/data/repositories/history_repository.dart';
 import 'package:mechanix_browser/features/browser/data/repositories/history_repository_impl.dart';
@@ -34,7 +35,11 @@ class MyApp extends StatelessWidget {
       ],
       child: MultiBlocProvider(
         providers: [
-          BlocProvider<BrowserBloc>(create: (context) => BrowserBloc()),
+          BlocProvider<DownloadBloc>(create: (context) => DownloadBloc()),
+          BlocProvider<BrowserBloc>(
+            create: (context) =>
+                BrowserBloc(downloadBloc: context.read<DownloadBloc>()),
+          ),
           BlocProvider<HistoryBloc>(
             create: (context) =>
                 HistoryBloc(repository: context.read<HistoryRepository>()),
