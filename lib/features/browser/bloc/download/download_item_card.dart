@@ -4,6 +4,7 @@ import 'package:mechanix_browser/core/utils/app_theme.dart';
 import 'package:mechanix_browser/features/browser/bloc/download/browser_download.dart';
 import 'package:mechanix_browser/features/browser/bloc/download/download_bloc.dart';
 import 'package:mechanix_browser/features/browser/bloc/download/download_service.dart';
+import 'package:mechanix_browser/l10n/app_localizations.dart';
 
 import 'download_file_badge.dart';
 import 'download_progress_bar.dart';
@@ -57,12 +58,12 @@ class DownloadItemCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                       ),
                       const SizedBox(height: 4),
-                      _buildMetaText(context, theme, colors),
+                      _DownloadMetaText(download: download),
                     ],
                   ),
                 ),
                 const SizedBox(width: 8),
-                _buildActionButtons(context, colors),
+                _DownloadActionButtons(download: download),
               ],
             ),
             if (download.status == DownloadStatus.downloading ||
@@ -78,31 +79,36 @@ class DownloadItemCard extends StatelessWidget {
       ),
     );
   }
+}
 
-  Widget _buildMetaText(
-    BuildContext context,
-    ThemeData theme,
-    AppColorsExtension colors,
-  ) {
+class _DownloadMetaText extends StatelessWidget {
+  final BrowserDownload download;
+
+  const _DownloadMetaText({required this.download});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.extension<AppColorsExtension>()!;
+    final l10n = AppLocalizations.of(context)!;
+
     if (download.status == DownloadStatus.failed ||
         download.status == DownloadStatus.cancelled) {
       final reason =
           download.errorMessage ??
           (download.status == DownloadStatus.cancelled
-              ? 'Cancelled'
-              : 'Network error');
+              ? l10n.cancelled
+              : l10n.networkError);
       return RichText(
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         text: TextSpan(
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: colors.textSecondary,
-          ),
+          style: theme.textTheme.bodySmall?.copyWith(),
           children: [
             TextSpan(text: '${download.domain} · '),
-            const TextSpan(
-              text: 'Failed',
-              style: TextStyle(
+            TextSpan(
+              text: l10n.failed,
+              style: const TextStyle(
                 color: Color(0xFFE54D42),
                 fontWeight: FontWeight.w500,
               ),
@@ -120,25 +126,29 @@ class DownloadItemCard extends StatelessWidget {
       overflow: TextOverflow.ellipsis,
     );
   }
+}
 
-  Widget _buildActionButtons(BuildContext context, AppColorsExtension colors) {
+class _DownloadActionButtons extends StatelessWidget {
+  final BrowserDownload download;
+
+  const _DownloadActionButtons({required this.download});
+
+  @override
+  Widget build(BuildContext context) {
     final bloc = context.read<DownloadBloc>();
+    final l10n = AppLocalizations.of(context)!;
 
     if (download.status == DownloadStatus.downloading) {
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          IconButton(
-            icon: const Icon(Icons.pause_rounded, size: 20),
-            color: colors.textSecondary,
-            visualDensity: VisualDensity.compact,
+          _DownloadActionButton(
+            icon: Icons.pause_rounded,
             onPressed: () =>
                 bloc.add(DownloadPauseRequested(download.downloadId)),
           ),
-          IconButton(
-            icon: const Icon(Icons.close_rounded, size: 20),
-            color: colors.textSecondary,
-            visualDensity: VisualDensity.compact,
+          _DownloadActionButton(
+            icon: Icons.close_rounded,
             onPressed: () =>
                 bloc.add(DownloadCancelRequested(download.downloadId)),
           ),
@@ -150,17 +160,13 @@ class DownloadItemCard extends StatelessWidget {
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          IconButton(
-            icon: const Icon(Icons.play_arrow_rounded, size: 20),
-            color: colors.textSecondary,
-            visualDensity: VisualDensity.compact,
+          _DownloadActionButton(
+            icon: Icons.play_arrow_rounded,
             onPressed: () =>
                 bloc.add(DownloadResumeRequested(download.downloadId)),
           ),
-          IconButton(
-            icon: const Icon(Icons.close_rounded, size: 20),
-            color: colors.textSecondary,
-            visualDensity: VisualDensity.compact,
+          _DownloadActionButton(
+            icon: Icons.close_rounded,
             onPressed: () =>
                 bloc.add(DownloadCancelRequested(download.downloadId)),
           ),
@@ -173,16 +179,12 @@ class DownloadItemCard extends StatelessWidget {
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded, size: 20),
-            color: colors.textSecondary,
-            visualDensity: VisualDensity.compact,
+          _DownloadActionButton(
+            icon: Icons.refresh_rounded,
             onPressed: () => bloc.add(DownloadRetryRequested(download)),
           ),
-          IconButton(
-            icon: const Icon(Icons.close_rounded, size: 20),
-            color: colors.textSecondary,
-            visualDensity: VisualDensity.compact,
+          _DownloadActionButton(
+            icon: Icons.close_rounded,
             onPressed: () =>
                 bloc.add(DownloadRemoveRequested(download.downloadId)),
           ),
@@ -194,22 +196,44 @@ class DownloadItemCard extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        IconButton(
-          icon: const Icon(Icons.folder_open_rounded, size: 20),
-          color: colors.textSecondary,
-          tooltip: 'Open Folder',
-          visualDensity: VisualDensity.compact,
+        _DownloadActionButton(
+          icon: Icons.folder_open_rounded,
+          tooltip: l10n.openFolder,
           onPressed: () =>
               DownloadService.openDownloadFolder(download.destinationPath),
         ),
-        IconButton(
-          icon: const Icon(Icons.close_rounded, size: 20),
-          color: colors.textSecondary,
-          visualDensity: VisualDensity.compact,
+        _DownloadActionButton(
+          icon: Icons.close_rounded,
           onPressed: () =>
               bloc.add(DownloadRemoveRequested(download.downloadId)),
         ),
       ],
+    );
+  }
+}
+
+class _DownloadActionButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onPressed;
+  final String? tooltip;
+
+  const _DownloadActionButton({
+    required this.icon,
+    required this.onPressed,
+    this.tooltip,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.extension<AppColorsExtension>()!;
+
+    return IconButton(
+      icon: Icon(icon, size: 20),
+      color: colors.textSecondary,
+      tooltip: tooltip,
+      visualDensity: VisualDensity.compact,
+      onPressed: onPressed,
     );
   }
 }

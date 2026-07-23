@@ -42,7 +42,7 @@ class DownloadsScreen extends StatelessWidget {
 
               return IconButton(
                 icon: const Icon(Icons.delete_sweep_outlined),
-                tooltip: 'Clear finished',
+                tooltip: l10n.clearFinished,
                 onPressed: () => context.read<DownloadBloc>().add(
                   const DownloadClearCompletedRequested(),
                 ),
@@ -51,7 +51,7 @@ class DownloadsScreen extends StatelessWidget {
           ),
           IconButton(
             icon: const Icon(Icons.folder_open_outlined),
-            tooltip: 'Open Downloads Folder',
+            tooltip: l10n.openDownloadsFolder,
             onPressed: () async {
               final path = await DownloadService.getDownloadsDirectoryPath();
               await DownloadService.openDownloadFolder(path);
@@ -84,14 +84,14 @@ class DownloadsScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
                   Text(
-                    'No downloads yet',
+                    l10n.noDownloadsYet,
                     style: theme.textTheme.titleMedium?.copyWith(
                       color: colors.searchBarText,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Files downloaded from web pages will appear here.',
+                    l10n.noDownloadsDescription,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: colors.textSecondary,
                     ),

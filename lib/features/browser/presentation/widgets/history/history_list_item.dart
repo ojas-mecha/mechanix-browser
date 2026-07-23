@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mechanix_browser/core/utils/app_theme.dart';
 import 'package:mechanix_browser/features/browser/data/models/browser_history.dart';
+import 'package:mechanix_browser/l10n/app_localizations.dart';
 
 class HistoryListItem extends StatelessWidget {
   final BrowserHistory item;
@@ -32,6 +33,7 @@ class HistoryListItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.extension<AppColorsExtension>()!;
+    final l10n = AppLocalizations.of(context)!;
     final initial = _getInitialLetter(item.title, item.url);
 
     return InkWell(
@@ -90,7 +92,7 @@ class HistoryListItem extends StatelessWidget {
               onPressed: onDelete,
               hoverColor: colors.closeButtonBackground,
               splashRadius: 18,
-              tooltip: 'Delete',
+              tooltip: l10n.delete,
             ),
           ],
         ),

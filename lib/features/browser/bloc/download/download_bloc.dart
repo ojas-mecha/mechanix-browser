@@ -98,16 +98,20 @@ class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
     DownloadStatus status;
     String? errorMsg;
 
-    if (event.isComplete) {
-      status = DownloadStatus.completed;
-    } else if (event.isCanceled) {
-      status = DownloadStatus.cancelled;
-      errorMsg = 'Cancelled';
-    } else if (event.isInterrupted) {
-      status = DownloadStatus.failed;
-      errorMsg = _getInterruptReasonText(event.interruptReason);
-    } else {
-      status = DownloadStatus.downloading;
+    switch (event) {
+      case _ when event.isComplete:
+        status = DownloadStatus.completed;
+
+      case _ when event.isCanceled:
+        status = DownloadStatus.cancelled;
+        errorMsg = 'Cancelled';
+
+      case _ when event.isInterrupted:
+        status = DownloadStatus.failed;
+        errorMsg = _getInterruptReasonText(event.interruptReason);
+
+      default:
+        status = DownloadStatus.downloading;
     }
 
     // 2. Compute progress percentage (0.0 to 1.0) based on received and total bytes.
@@ -245,21 +249,25 @@ class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
     DownloadResumeRequested event,
     Emitter<DownloadState> emit,
   ) async {
-    final controller = _controllerMap[event.downloadId];
-    if (controller != null) {
-      await controller.resumeDownload(event.downloadId);
-    }
+    try {
+      final controller = _controllerMap[event.downloadId];
+      if (controller != null) {
+        await controller.resumeDownload(event.downloadId);
+      }
 
-    final index = state.downloads.indexWhere(
-      (d) => d.downloadId == event.downloadId,
-    );
-    if (index != -1) {
-      final updated = state.downloads[index].copyWith(
-        status: DownloadStatus.downloading,
+      final index = state.downloads.indexWhere(
+        (d) => d.downloadId == event.downloadId,
       );
-      final updatedList = List<BrowserDownload>.from(state.downloads)
-        ..[index] = updated;
-      emit(state.copyWith(downloads: updatedList));
+      if (index != -1) {
+        final updated = state.downloads[index].copyWith(
+          status: DownloadStatus.downloading,
+        );
+        final updatedList = List<BrowserDownload>.from(state.downloads)
+          ..[index] = updated;
+        emit(state.copyWith(downloads: updatedList));
+      }
+    } catch (e) {
+      AppLogger.i("Error resuming download: $e");
     }
   }
 

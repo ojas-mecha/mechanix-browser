@@ -51,15 +51,15 @@ class HistoryBloc extends Bloc<HistoryEvent, HistoryState> {
     final repo = _ensureRepository();
     repo.deleteHistory(event.item.id);
 
-    final List<BrowserHistory> updatedItems;
-    if (state.searchQuery.trim().isEmpty) {
-      updatedItems = repo.getHistory();
-    } else {
-      updatedItems = repo.searchHistory(state.searchQuery);
-    }
+    final remainingItems = state.historyItems
+        .where((item) => item.id != event.item.id)
+        .toList();
 
-    final grouped = HistoryDateGrouper.groupHistory(updatedItems);
-    emit(state.copyWith(historyItems: updatedItems, groupedSections: grouped));
+    final grouped = HistoryDateGrouper.groupHistory(remainingItems);
+
+    emit(
+      state.copyWith(historyItems: remainingItems, groupedSections: grouped),
+    );
   }
 
   Future<void> _onClearRequested(

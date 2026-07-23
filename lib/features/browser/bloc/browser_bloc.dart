@@ -56,6 +56,8 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
     on<BrowserCloseTabRequested>(_onCloseTab);
     on<BrowserSwitchTabRequested>(_onSwitchTab);
     on<BrowserCloseAllTabsRequested>(_onCloseAllTabs);
+    on<BrowserLoadStarted>(_onLoadStarted);
+    on<BrowserLoadEnded>(_onLoadEnded);
     on<BrowserBookmarkAdded>(_onBookmarkAdded);
     on<BrowserBookmarkRemoved>(_onBookmarkRemoved);
     on<BrowserBookmarkToggled>(_onBookmarkToggled);
@@ -98,6 +100,7 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
       currentUrl: initialUrl == AppConstants.homepageUrl ? '' : initialUrl,
       title: '',
       isHomePage: initialUrl == AppConstants.homepageUrl,
+      isLoading: false,
       isPrivate: isPrivate,
     );
   }
@@ -624,6 +627,11 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
 
     // Save URL changes to browser history
     if (_historyRepository != null && !isHome) {
+      final parsedUri = Uri.tryParse(event.url.trim());
+      if (parsedUri == null || !parsedUri.isAbsolute) {
+        AppLogger.i('Skipping history save for invalid/incorrect URL: ${event.url}');
+        return;
+      }
       try {
         final history = _historyRepository!.getHistory();
         final now = DateTime.now().millisecondsSinceEpoch;
@@ -660,9 +668,6 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
         AppLogger.i(
           'Successfully saved history entry: url=${entryToSave.url}, title=${entryToSave.title}',
         );
-
-        final updatedHistory = _historyRepository!.getHistory();
-        emit(state.copyWith(searchResults: updatedHistory));
       } catch (e, stackTrace) {
         AppLogger.e('Error saving history URL', error: e, stack: stackTrace);
       }

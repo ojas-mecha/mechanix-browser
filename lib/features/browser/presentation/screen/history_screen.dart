@@ -58,7 +58,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 TextButton(
                   onPressed: () => _onClearAll(context),
                   child: Text(
-                    'Clear all',
+                    l10n.clearAll,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: colors.textSecondary,
                     ),

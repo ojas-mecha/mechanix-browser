@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mechanix_browser/core/routes/app_routes.dart';
 import 'package:mechanix_browser/core/utils/app_theme.dart';
 import 'package:mechanix_browser/features/browser/bloc/download/download_bloc.dart';
+import 'package:mechanix_browser/l10n/app_localizations.dart';
 
 class DownloadNotificationOverlay extends StatelessWidget {
   const DownloadNotificationOverlay({super.key});
@@ -11,6 +12,7 @@ class DownloadNotificationOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.extension<AppColorsExtension>()!;
+    final l10n = AppLocalizations.of(context)!;
 
     return BlocBuilder<DownloadBloc, DownloadState>(
       builder: (context, state) {
@@ -61,8 +63,8 @@ class DownloadNotificationOverlay extends StatelessWidget {
                       children: [
                         Text(
                           latest != null
-                              ? 'Downloading ${latest.filename}'
-                              : 'Downloading files...',
+                              ? l10n.downloadingFile(latest.filename)
+                              : l10n.downloadingFiles,
                           style: theme.textTheme.bodyMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                             color: colors.searchBarText,

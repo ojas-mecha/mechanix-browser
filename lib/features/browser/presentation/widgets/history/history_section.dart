@@ -3,6 +3,7 @@ import 'package:mechanix_browser/core/utils/app_theme.dart';
 import 'package:mechanix_browser/core/utils/history_date_grouper.dart';
 import 'package:mechanix_browser/features/browser/data/models/browser_history.dart';
 import 'package:mechanix_browser/features/browser/presentation/widgets/history/history_list_item.dart';
+import 'package:mechanix_browser/l10n/app_localizations.dart';
 
 class HistorySection extends StatelessWidget {
   final HistoryGroup group;
@@ -15,6 +16,22 @@ class HistorySection extends StatelessWidget {
     required this.onItemTap,
     required this.onItemDelete,
   });
+
+  String _getLocalizedTitle(BuildContext context, String title) {
+    final l10n = AppLocalizations.of(context)!;
+    switch (title) {
+      case 'Today':
+        return l10n.today;
+      case 'Yesterday':
+        return l10n.yesterday;
+      case 'This Week':
+        return l10n.thisWeek;
+      case 'This Month':
+        return l10n.thisMonth;
+      default:
+        return title;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +48,7 @@ class HistorySection extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.only(top: 16.0, bottom: 8.0, left: 4.0),
           child: Text(
-            group.title,
+            _getLocalizedTitle(context, group.title),
             style: theme.textTheme.titleSmall?.copyWith(
               color: colors.textSecondary,
               fontWeight: FontWeight.bold,
