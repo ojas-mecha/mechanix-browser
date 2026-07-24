@@ -68,6 +68,7 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
     on<BrowserModeChanged>(_onBrowserModeChanged);
     on<BrowserTabSwitcherOpened>(_onTabSwitcherOpened);
     on<BrowserTabSwitcherModeToggled>(_onTabSwitcherModeToggled);
+    on<BrowserBottomBarVisibilityChanged>(_onBottomBarVisibilityChanged);
   }
 
   /// Creates a new tab instance with the specified [initialUrl].
@@ -143,6 +144,14 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
               );
             },
           ),
+          JavascriptChannel(
+            name: 'ScrollChannel',
+            onMessageReceived: (JavascriptMessage message) {
+              if (message.message == 'atTop') {
+                add(const BrowserBottomBarVisibilityChanged(true));
+              }
+            },
+          ),
         };
         controller.setJavaScriptChannels(jsChannels);
         controller.executeJavaScript("function abc(e){return 'abc:'+ e}");
@@ -157,6 +166,28 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
       onLoadEnd: (c, url) {
         AppLogger.i("onLoadEnd => $url");
         add(BrowserLoadEnded(tabId: tabId));
+        
+        c.executeJavaScript('''
+          (function() {
+            let lastScrollY = window.scrollY;
+            let atTop = lastScrollY === 0;
+
+            if (atTop) {
+              ScrollChannel('atTop');
+            }
+
+            window.addEventListener('scroll', () => {
+              const currentScrollY = window.scrollY;
+              if (currentScrollY === 0 && !atTop) {
+                atTop = true;
+                ScrollChannel('atTop');
+              } else if (currentScrollY > 0 && atTop) {
+                atTop = false;
+                ScrollChannel('leftTop');
+              }
+            });
+          })();
+        ''');
       },
       onBeforeDownload:
           (
@@ -431,6 +462,7 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
             tabSwitcherMode: BrowserMode.private,
             privateTabs: updatedTabs,
             activePrivateTabIndex: newActiveIndex,
+            isBottomBarVisible: true,
           ),
         );
       } else {
@@ -440,6 +472,7 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
             tabSwitcherMode: BrowserMode.normal,
             normalTabs: updatedTabs,
             activeNormalTabIndex: newActiveIndex,
+            isBottomBarVisible: true,
           ),
         );
         _persistTabs();
@@ -611,6 +644,7 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
             mode: targetMode,
             activePrivateTabIndex: index,
             tabSwitcherMode: targetMode,
+            isBottomBarVisible: true,
           ),
         );
       } else {
@@ -619,6 +653,7 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
             mode: targetMode,
             activeNormalTabIndex: index,
             tabSwitcherMode: targetMode,
+            isBottomBarVisible: true,
           ),
         );
       }
@@ -832,9 +867,9 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
         updatedTabs[activeIndex] = updatedTab;
 
         if (isPrivate) {
-          emit(state.copyWith(privateTabs: updatedTabs));
+          emit(state.copyWith(privateTabs: updatedTabs, isBottomBarVisible: true));
         } else {
-          emit(state.copyWith(normalTabs: updatedTabs));
+          emit(state.copyWith(normalTabs: updatedTabs, isBottomBarVisible: true));
           _persistTabs();
         }
 
@@ -874,9 +909,9 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
     updatedTabs[index] = updatedTab;
 
     if (isPrivate) {
-      emit(state.copyWith(privateTabs: updatedTabs));
+      emit(state.copyWith(privateTabs: updatedTabs, isBottomBarVisible: true));
     } else {
-      emit(state.copyWith(normalTabs: updatedTabs));
+      emit(state.copyWith(normalTabs: updatedTabs, isBottomBarVisible: true));
       _persistTabs();
     }
 
@@ -1032,9 +1067,9 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
     updatedTabs[index] = updatedTab;
 
     if (isPrivate) {
-      emit(state.copyWith(privateTabs: updatedTabs));
+      emit(state.copyWith(privateTabs: updatedTabs, isBottomBarVisible: true));
     } else {
-      emit(state.copyWith(normalTabs: updatedTabs));
+      emit(state.copyWith(normalTabs: updatedTabs, isBottomBarVisible: true));
       _persistTabs();
     }
   }
@@ -1159,6 +1194,15 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
         ? BrowserMode.private
         : BrowserMode.normal;
     emit(state.copyWith(tabSwitcherMode: nextMode));
+  }
+
+  void _onBottomBarVisibilityChanged(
+    BrowserBottomBarVisibilityChanged event,
+    Emitter<BrowserState> emit,
+  ) {
+    if (state.isBottomBarVisible != event.isVisible) {
+      emit(state.copyWith(isBottomBarVisible: event.isVisible));
+    }
   }
 
   /// Clean up and dispose of CEF webviews, repositories, and resources.

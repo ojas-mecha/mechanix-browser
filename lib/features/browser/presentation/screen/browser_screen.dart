@@ -33,7 +33,18 @@ class _BrowserScreenState extends State<BrowserScreen> {
                         ? const BrowserWebviewBody()
                         : const Center(child: CircularProgressIndicator()),
                   ),
-                  const BrowserBottomBar(),
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeInOut,
+                    height: state.isBottomBarVisible ? 72.0 : 0.0,
+                    child: const SingleChildScrollView(
+                      physics: NeverScrollableScrollPhysics(),
+                      child: SizedBox(
+                        height: 72.0,
+                        child: BrowserBottomBar(),
+                      ),
+                    ),
+                  ),
                 ],
               ),
               const DownloadNotificationOverlay(),
