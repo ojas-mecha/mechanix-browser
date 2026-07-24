@@ -23,28 +23,53 @@ class _BrowserBottomBarState extends State<BrowserBottomBar> {
   OverlayEntry? _overlayEntry;
   OverlayEntry? _menuOverlayEntry;
   Timer? _debounceTimer;
+  String _lastUrl = '';
 
   @override
   void initState() {
     super.initState();
     _focusNode.addListener(_onFocusChange);
+
+    final bloc = context.read<BrowserBloc>();
+    final state = bloc.state;
+    _lastUrl = state.currentUrl;
+    if (state.isHomePage) {
+      _textController.text = '';
+    } else {
+      _textController.text = state.title.isNotEmpty
+          ? state.title
+          : state.currentUrl;
+    }
   }
 
   void _onFocusChange() {
     if (!mounted) return;
     setState(() {});
+
+    final bloc = context.read<BrowserBloc>();
+    final state = bloc.state;
+
     if (_focusNode.hasFocus) {
+      if (!state.isHomePage) {
+        _textController.text = state.currentUrl;
+        _textController.selection = TextSelection(
+          baseOffset: 0,
+          extentOffset: _textController.text.length,
+        );
+      }
       _showOverlay();
-      context.read<BrowserBloc>().add(
-        BrowserSearchQueryChanged(_textController.text),
-      );
+      bloc.add(BrowserSearchQueryChanged(_textController.text));
       context.read<BrowserBloc>().add(
         const BrowserBottomBarVisibilityChanged(true, isInteracting: true),
       );
     } else {
-      context.read<BrowserBloc>().add(
-        const BrowserBottomBarVisibilityChanged(true, isInteracting: false),
-      );
+      if (state.isHomePage) {
+        _textController.text = '';
+      } else {
+        _textController.text = state.title.isNotEmpty
+            ? state.title
+            : state.currentUrl;
+      }
     }
   }
 
@@ -58,7 +83,7 @@ class _BrowserBottomBarState extends State<BrowserBottomBar> {
         return Positioned(
           left: 0,
           right: 0,
-          bottom: 72,
+          bottom: 60,
           child: Material(
             color: Colors.transparent,
             child: TapRegion(
@@ -94,6 +119,9 @@ class _BrowserBottomBarState extends State<BrowserBottomBar> {
 
   void _hideOverlay() {
     if (_overlayEntry != null) {
+      context.read<BrowserBloc>().add(
+        const BrowserBottomBarVisibilityChanged(true, isInteracting: false),
+      );
       _overlayEntry!.remove();
       _overlayEntry = null;
     }
@@ -174,13 +202,26 @@ class _BrowserBottomBarState extends State<BrowserBottomBar> {
           previous.title != current.title ||
           previous.isHomePage != current.isHomePage,
       listener: (context, state) {
-        if (state.isHomePage) {
-          _textController.text = '';
+        final currentUrl = state.currentUrl;
+        final title = state.title;
+
+        if (_focusNode.hasFocus) {
+          if (state.isHomePage) {
+            _textController.text = '';
+          } else {
+            if (_textController.text == _lastUrl ||
+                _textController.text.isEmpty) {
+              _textController.text = currentUrl;
+            }
+          }
         } else {
-          _textController.text = state.title.isNotEmpty
-              ? state.title
-              : state.currentUrl;
+          if (state.isHomePage) {
+            _textController.text = '';
+          } else {
+            _textController.text = title.isNotEmpty ? title : currentUrl;
+          }
         }
+        _lastUrl = currentUrl;
       },
       child: BlocBuilder<BrowserBloc, BrowserState>(
         buildWhen: (previous, current) =>
