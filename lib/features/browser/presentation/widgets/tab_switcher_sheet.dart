@@ -118,35 +118,79 @@ class TabSwitcherSheet extends StatelessWidget {
                           ),
                         ),
                       )
-                    : GridView.builder(
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              crossAxisSpacing: 16,
-                              mainAxisSpacing: 16,
-                              childAspectRatio: 0.75,
-                            ),
-                        itemCount: tabList.length,
-                        itemBuilder: (context, index) {
-                          final tab = tabList[index];
-                          final isActive = index == activeIndex;
+                    : LayoutBuilder(
+                        builder: (context, constraints) {
+                          const crossAxisSpacing = 16.0;
+                          const mainAxisSpacing = 16.0;
+                          const childAspectRatio = 0.75;
+                          const columns = 2;
 
-                          return Dismissible(
-                            key: ValueKey('dismiss_${tab.id}'),
-                            direction: DismissDirection.horizontal,
-                            onDismissed: (direction) {
-                              bloc.add(BrowserCloseTabRequested(tab.id));
-                            },
-                            child: TabCardItem(
-                              tab: tab,
-                              isActive: isActive,
-                              onTap: () {
-                                bloc.add(BrowserSwitchTabRequested(tab.id));
-                                Navigator.pop(context);
-                              },
-                              onClose: () {
-                                bloc.add(BrowserCloseTabRequested(tab.id));
-                              },
+                          final totalSpacing = crossAxisSpacing * (columns - 1);
+                          final itemWidth =
+                              (constraints.maxWidth - totalSpacing) / columns;
+                          final itemHeight = itemWidth / childAspectRatio;
+
+                          final rowCount = (tabList.length / columns).ceil();
+                          final gridHeight =
+                              rowCount * itemHeight +
+                              (rowCount > 0
+                                  ? (rowCount - 1) * mainAxisSpacing
+                                  : 0);
+
+                          return SingleChildScrollView(
+                            padding: const EdgeInsets.only(bottom: 80),
+                            child: SizedBox(
+                              height: gridHeight,
+                              child: Stack(
+                                children: List.generate(tabList.length, (
+                                  index,
+                                ) {
+                                  final tab = tabList[index];
+                                  final isActive = index == activeIndex;
+
+                                  final row = index ~/ columns;
+                                  final col = index % columns;
+
+                                  final left =
+                                      col * (itemWidth + crossAxisSpacing);
+                                  final top =
+                                      row * (itemHeight + mainAxisSpacing);
+
+                                  return AnimatedPositioned(
+                                    key: ValueKey('pos_${tab.id}'),
+                                    duration: const Duration(milliseconds: 300),
+                                    curve: Curves.easeInOut,
+                                    left: left,
+                                    top: top,
+                                    width: itemWidth,
+                                    height: itemHeight,
+                                    child: Dismissible(
+                                      key: ValueKey('dismiss_${tab.id}'),
+                                      direction: DismissDirection.horizontal,
+                                      onDismissed: (direction) {
+                                        bloc.add(
+                                          BrowserCloseTabRequested(tab.id),
+                                        );
+                                      },
+                                      child: TabCardItem(
+                                        tab: tab,
+                                        isActive: isActive,
+                                        onTap: () {
+                                          bloc.add(
+                                            BrowserSwitchTabRequested(tab.id),
+                                          );
+                                          Navigator.pop(context);
+                                        },
+                                        onClose: () {
+                                          bloc.add(
+                                            BrowserCloseTabRequested(tab.id),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  );
+                                }),
+                              ),
                             ),
                           );
                         },
