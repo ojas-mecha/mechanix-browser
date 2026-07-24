@@ -1,8 +1,11 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mechanix_browser/core/utils/app_theme.dart';
 import 'package:mechanix_browser/features/browser/bloc/browser_bloc.dart';
+import 'package:mechanix_browser/features/browser/data/models/browser_tab.dart';
 import 'package:mechanix_browser/features/browser/presentation/widgets/home_page_body.dart';
+import 'package:mechanix_browser/features/browser/presentation/widgets/swipe_gesture_classifier.dart';
 
 class BrowserWebviewBody extends StatelessWidget {
   const BrowserWebviewBody({super.key});
@@ -49,9 +52,19 @@ class BrowserWebviewBody extends StatelessWidget {
                     ValueListenableBuilder(
                       valueListenable: tab.controller,
                       builder: (context, value, child) {
-                        return tab.controller.value
-                            ? Expanded(child: tab.controller.webviewWidget)
-                            : tab.controller.loadingWidget;
+                        if (!tab.controller.value) {
+                          return tab.controller.loadingWidget;
+                        }
+                        if (tab.isHomePage) {
+                          return Expanded(child: tab.controller.webviewWidget);
+                        }
+                        return Expanded(
+                          child: BrowserGestureNavigator(
+                            tab: tab,
+                            bloc: context.read<BrowserBloc>(),
+                            child: tab.controller.webviewWidget,
+                          ),
+                        );
                       },
                     ),
                   ],
@@ -249,6 +262,86 @@ class _PrivateEmptyStateView extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class BrowserGestureNavigator extends StatefulWidget {
+  final BrowserTab tab;
+  final BrowserBloc bloc;
+  final Widget child;
+
+  const BrowserGestureNavigator({
+    super.key,
+    required this.tab,
+    required this.bloc,
+    required this.child,
+  });
+
+  @override
+  State<BrowserGestureNavigator> createState() =>
+      _BrowserGestureNavigatorState();
+}
+
+class _BrowserGestureNavigatorState extends State<BrowserGestureNavigator> {
+  Offset? _startPosition;
+  bool _isGestureRejected = false;
+  bool _hasNavigated = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Listener(
+      behavior: HitTestBehavior.translucent,
+      onPointerDown: (PointerDownEvent event) {
+        if (event.kind != PointerDeviceKind.touch) {
+          _isGestureRejected = true;
+          return;
+        }
+        _startPosition = event.localPosition;
+        _isGestureRejected = false;
+        _hasNavigated = false;
+      },
+      onPointerMove: (PointerMoveEvent event) {
+        if (_isGestureRejected || _hasNavigated || _startPosition == null) {
+          return;
+        }
+
+        final dx = event.localPosition.dx - _startPosition!.dx;
+        final dy = event.localPosition.dy - _startPosition!.dy;
+
+        // If diagonal movement is vertical-dominant, reject this gesture early
+        if (dy.abs() > dx.abs() && dy.abs() > 20) {
+          _isGestureRejected = true;
+        }
+      },
+      onPointerUp: (PointerUpEvent event) async {
+        if (_isGestureRejected || _hasNavigated || _startPosition == null) {
+          _startPosition = null;
+          return;
+        }
+
+        final direction = SwipeGestureClassifier.classify(
+          startPosition: _startPosition!,
+          endPosition: event.localPosition,
+        );
+
+        _startPosition = null;
+
+        if (direction == SwipeDirection.back) {
+          _hasNavigated = true;
+          final canGoBack = await widget.tab.controller.canGoBack();
+          if (canGoBack) {
+            widget.bloc.add(BrowserGoBackRequested());
+          }
+        } else if (direction == SwipeDirection.forward) {
+          _hasNavigated = true;
+          final canGoForward = await widget.tab.controller.canGoForward();
+          if (canGoForward) {
+            widget.bloc.add(BrowserGoForwardRequested());
+          }
+        }
+      },
+      child: widget.child,
     );
   }
 }
