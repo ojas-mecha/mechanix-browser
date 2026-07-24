@@ -200,6 +200,8 @@ class AppTheme {
     iconButtonTheme: const IconButtonThemeData(
       style: ButtonStyle(
         mouseCursor: WidgetStatePropertyAll(SystemMouseCursors.click),
+        minimumSize: WidgetStatePropertyAll(Size(48, 48)),
+        tapTargetSize: MaterialTapTargetSize.padded,
       ),
     ),
     pageTransitionsTheme: const PageTransitionsTheme(
@@ -301,6 +303,8 @@ class AppTheme {
     iconButtonTheme: const IconButtonThemeData(
       style: ButtonStyle(
         mouseCursor: WidgetStatePropertyAll(SystemMouseCursors.click),
+        minimumSize: WidgetStatePropertyAll(Size(48, 48)),
+        tapTargetSize: MaterialTapTargetSize.padded,
       ),
     ),
     pageTransitionsTheme: const PageTransitionsTheme(
