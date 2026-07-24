@@ -332,15 +332,16 @@ class _BrowserGestureNavigatorState extends State<BrowserGestureNavigator> {
         if (_gestureType == _GestureType.vertical) {
           final deltaY = event.delta.dy;
           if (deltaY.abs() > 0.5) {
-            final currentScrollDown = deltaY < 0; // Finger moves up -> scroll down
-            
+            final currentScrollDown =
+                deltaY < 0; // Finger moves up -> scroll down
+
             if (_isScrollDirectionDown != currentScrollDown) {
               _isScrollDirectionDown = currentScrollDown;
               _accumulatedScroll = 0.0;
             }
-            
+
             _accumulatedScroll += deltaY.abs();
-            
+
             if (_accumulatedScroll >= bottomBarScrollThreshold) {
               _accumulatedScroll = 0.0;
               final currentVisible = widget.bloc.state.isBottomBarVisible;
@@ -362,14 +363,14 @@ class _BrowserGestureNavigatorState extends State<BrowserGestureNavigator> {
           final deltaY = signal.scrollDelta.dy;
           if (deltaY.abs() > 2.0) {
             final currentScrollDown = deltaY > 0;
-            
+
             if (_isScrollDirectionDown != currentScrollDown) {
               _isScrollDirectionDown = currentScrollDown;
               _accumulatedScroll = 0.0;
             }
-            
+
             _accumulatedScroll += deltaY.abs();
-            
+
             if (_accumulatedScroll >= bottomBarScrollThreshold) {
               _accumulatedScroll = 0.0;
               final currentVisible = widget.bloc.state.isBottomBarVisible;
@@ -400,16 +401,20 @@ class _BrowserGestureNavigatorState extends State<BrowserGestureNavigator> {
 
         if (direction == SwipeDirection.back) {
           _hasNavigated = true;
-          final canGoBack = await widget.tab.controller.canGoBack();
-          if (canGoBack) {
-            widget.bloc.add(BrowserGoBackRequested());
-          }
+          // TODO: Later need for implementation
+          // final canGoBack = await widget.tab.controller.canGoBack();
+          // if (canGoBack) {
+          //   widget.bloc.add(BrowserGoBackRequested());
+          // }
+          widget.bloc.add(BrowserGoBackRequested());
         } else if (direction == SwipeDirection.forward) {
           _hasNavigated = true;
-          final canGoForward = await widget.tab.controller.canGoForward();
-          if (canGoForward) {
-            widget.bloc.add(BrowserGoForwardRequested());
-          }
+          // TODO: Later need for implementation
+          // final canGoForward = await widget.tab.controller.canGoForward();
+          // if (canGoForward) {
+          //   widget.bloc.add(BrowserGoForwardRequested());
+          // }
+          widget.bloc.add(BrowserGoForwardRequested());
         }
       },
       child: widget.child,
