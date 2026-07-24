@@ -34,15 +34,13 @@ class _BrowserScreenState extends State<BrowserScreen> {
                         : const Center(child: CircularProgressIndicator()),
                   ),
                   AnimatedContainer(
-                    duration: const Duration(milliseconds: 250),
+                    duration: const Duration(milliseconds: 0),
+                    // duration: const Duration(milliseconds: 250),//TODO: need for further implemented
                     curve: Curves.easeInOut,
                     height: state.isBottomBarVisible ? 72.0 : 0.0,
                     child: const SingleChildScrollView(
                       physics: NeverScrollableScrollPhysics(),
-                      child: SizedBox(
-                        height: 72.0,
-                        child: BrowserBottomBar(),
-                      ),
+                      child: SizedBox(height: 72.0, child: BrowserBottomBar()),
                     ),
                   ),
                 ],

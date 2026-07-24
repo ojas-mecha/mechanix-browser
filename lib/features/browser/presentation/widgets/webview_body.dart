@@ -285,8 +285,12 @@ class BrowserGestureNavigator extends StatefulWidget {
       _BrowserGestureNavigatorState();
 }
 
-class _BrowserGestureNavigatorState extends State<BrowserGestureNavigator> {
+class _BrowserGestureNavigatorState extends State<BrowserGestureNavigator>
+    with SingleTickerProviderStateMixin {
   static const double bottomBarScrollThreshold = 40.0;
+  static const double navigationSwipeThreshold = 100.0;
+  static const double maxDragDistance = 300.0;
+
   Offset? _startPosition;
   bool _isGestureRejected = false;
   bool _hasNavigated = false;
@@ -294,6 +298,30 @@ class _BrowserGestureNavigatorState extends State<BrowserGestureNavigator> {
   double _accumulatedScroll = 0.0;
   bool? _isScrollDirectionDown;
   _GestureType _gestureType = _GestureType.undecided;
+
+  // Animation variables
+  late AnimationController _animationController;
+  double _dragOffset = 0.0;
+  bool _isAnimating = false;
+  SwipeDirection? _pendingDirection;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 250),
+    );
+    _animationController.addListener(() {
+      setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -309,6 +337,10 @@ class _BrowserGestureNavigatorState extends State<BrowserGestureNavigator> {
         _hasNavigated = false;
         _gestureType = _GestureType.undecided;
         _accumulatedScroll = 0.0;
+        _dragOffset = 0.0;
+        _pendingDirection = null;
+        _animationController.stop();
+        _animationController.reset();
       },
       onPointerMove: (PointerMoveEvent event) {
         if (_startPosition == null) return;
@@ -357,6 +389,21 @@ class _BrowserGestureNavigatorState extends State<BrowserGestureNavigator> {
         if (_isGestureRejected || _hasNavigated) {
           return;
         }
+
+        // 3. Track horizontal drag for navigation animation
+        if (_gestureType == _GestureType.horizontal) {
+          // Clamp drag offset to max drag distance
+          _dragOffset = dx.clamp(-maxDragDistance, maxDragDistance);
+
+          // Determine direction based on drag
+          if (_dragOffset > 0) {
+            _pendingDirection = SwipeDirection.back;
+          } else if (_dragOffset < 0) {
+            _pendingDirection = SwipeDirection.forward;
+          }
+
+          setState(() {});
+        }
       },
       onPointerSignal: (PointerSignalEvent signal) {
         if (signal is PointerScrollEvent) {
@@ -389,35 +436,107 @@ class _BrowserGestureNavigatorState extends State<BrowserGestureNavigator> {
 
         if (_isGestureRejected || _hasNavigated || _startPosition == null) {
           _startPosition = null;
+          _cancelAnimation();
           return;
         }
 
-        final direction = SwipeGestureClassifier.classify(
-          startPosition: _startPosition!,
-          endPosition: event.localPosition,
-        );
-
         _startPosition = null;
 
-        if (direction == SwipeDirection.back) {
-          _hasNavigated = true;
-          // TODO: Later need for implementation
-          // final canGoBack = await widget.tab.controller.canGoBack();
-          // if (canGoBack) {
-          //   widget.bloc.add(BrowserGoBackRequested());
-          // }
-          widget.bloc.add(BrowserGoBackRequested());
-        } else if (direction == SwipeDirection.forward) {
-          _hasNavigated = true;
-          // TODO: Later need for implementation
-          // final canGoForward = await widget.tab.controller.canGoForward();
-          // if (canGoForward) {
-          //   widget.bloc.add(BrowserGoForwardRequested());
-          // }
-          widget.bloc.add(BrowserGoForwardRequested());
+        // Check if drag exceeds threshold for navigation
+        final dragDistance = _dragOffset.abs();
+        if (dragDistance >= navigationSwipeThreshold &&
+            _pendingDirection != null) {
+          // Complete the navigation animation
+          await _completeNavigationAnimation(_pendingDirection!);
+
+          // Trigger navigation after animation completes
+          if (_pendingDirection == SwipeDirection.back) {
+            _hasNavigated = true;
+            // TODO: Later need for implementation
+            // final canGoBack = await widget.tab.controller.canGoBack();
+            // if (canGoBack) {
+            //   widget.bloc.add(BrowserGoBackRequested());
+            // }
+            widget.bloc.add(BrowserGoBackRequested());
+          } else if (_pendingDirection == SwipeDirection.forward) {
+            _hasNavigated = true;
+            // TODO: Later need for implementation
+            // final canGoForward = await widget.tab.controller.canGoForward();
+            // if (canGoForward) {
+            //   widget.bloc.add(BrowserGoForwardRequested());
+            // }
+            widget.bloc.add(BrowserGoForwardRequested());
+          }
+        } else {
+          // Cancel animation - return to original position
+          _cancelAnimation();
         }
+
+        _pendingDirection = null;
       },
-      child: widget.child,
+      child: _buildAnimatedChild(),
     );
+  }
+
+  Widget _buildAnimatedChild() {
+    // Calculate current offset based on drag or animation
+    double currentOffset = _dragOffset;
+
+    if (_isAnimating) {
+      // Use animation value when animating
+      final animationValue = _animationController.value;
+      if (_pendingDirection == SwipeDirection.back) {
+        currentOffset =
+            _dragOffset + (maxDragDistance - _dragOffset) * animationValue;
+      } else if (_pendingDirection == SwipeDirection.forward) {
+        currentOffset =
+            _dragOffset - (maxDragDistance + _dragOffset) * animationValue;
+      } else {
+        // Cancel animation - return to 0
+        currentOffset = _dragOffset * (1 - animationValue);
+      }
+    }
+
+    // Apply visual feedback with transform and opacity
+    final progress = currentOffset.abs() / maxDragDistance;
+    final opacity = 1.0 - (progress * 0.3); // Slight fade during drag
+    final scale = 1.0 - (progress * 0.05); // Slight scale during drag
+
+    // TODO: Later need for implementation
+    // return Transform.translate(
+    //   offset: Offset(currentOffset, 0),
+    //   child: Opacity(
+    //     opacity: opacity.clamp(0.7, 1.0),
+    //     child: Transform.scale(
+    //       scale: scale.clamp(0.95, 1.0),
+    //       child: widget.child,
+    //     ),
+    //   ),
+    // );
+    return Container(child: widget.child);
+  }
+
+  Future<void> _completeNavigationAnimation(SwipeDirection direction) async {
+    _isAnimating = true;
+    _pendingDirection = direction;
+
+    await _animationController.forward();
+
+    _isAnimating = false;
+    _dragOffset = 0.0;
+    _animationController.reset();
+    setState(() {});
+  }
+
+  void _cancelAnimation() {
+    _isAnimating = true;
+    _pendingDirection = null;
+
+    _animationController.forward().then((_) {
+      _isAnimating = false;
+      _dragOffset = 0.0;
+      _animationController.reset();
+      setState(() {});
+    });
   }
 }
