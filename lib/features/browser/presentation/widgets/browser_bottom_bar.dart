@@ -23,21 +23,51 @@ class _BrowserBottomBarState extends State<BrowserBottomBar> {
   OverlayEntry? _overlayEntry;
   OverlayEntry? _menuOverlayEntry;
   Timer? _debounceTimer;
+  String _lastUrl = '';
 
   @override
   void initState() {
     super.initState();
     _focusNode.addListener(_onFocusChange);
+
+    final bloc = context.read<BrowserBloc>();
+    final state = bloc.state;
+    _lastUrl = state.currentUrl;
+    if (state.isHomePage) {
+      _textController.text = '';
+    } else {
+      _textController.text = state.title.isNotEmpty ? state.title : state.currentUrl;
+    }
   }
 
   void _onFocusChange() {
     if (!mounted) return;
     setState(() {});
+
+    final bloc = context.read<BrowserBloc>();
+    final state = bloc.state;
+
     if (_focusNode.hasFocus) {
+      if (!state.isHomePage) {
+        _textController.text = state.currentUrl;
+        _textController.selection = TextSelection(
+          baseOffset: 0,
+          extentOffset: _textController.text.length,
+        );
+      }
       _showOverlay();
-      context.read<BrowserBloc>().add(
+      bloc.add(
         BrowserSearchQueryChanged(_textController.text),
       );
+    } else {
+      _hideOverlay();
+      if (state.isHomePage) {
+        _textController.text = '';
+      } else {
+        _textController.text = state.title.isNotEmpty
+            ? state.title
+            : state.currentUrl;
+      }
     }
   }
 
@@ -160,13 +190,27 @@ class _BrowserBottomBarState extends State<BrowserBottomBar> {
           previous.title != current.title ||
           previous.isHomePage != current.isHomePage,
       listener: (context, state) {
-        if (state.isHomePage) {
-          _textController.text = '';
+        final currentUrl = state.currentUrl;
+        final title = state.title;
+
+        if (_focusNode.hasFocus) {
+          if (state.isHomePage) {
+            _textController.text = '';
+          } else {
+            if (_textController.text == _lastUrl || _textController.text.isEmpty) {
+              _textController.text = currentUrl;
+            }
+          }
         } else {
-          _textController.text = state.title.isNotEmpty
-              ? state.title
-              : state.currentUrl;
+          if (state.isHomePage) {
+            _textController.text = '';
+          } else {
+            _textController.text = title.isNotEmpty
+                ? title
+                : currentUrl;
+          }
         }
+        _lastUrl = currentUrl;
       },
       child: BlocBuilder<BrowserBloc, BrowserState>(
         buildWhen: (previous, current) =>
