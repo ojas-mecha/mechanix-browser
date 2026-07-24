@@ -159,3 +159,11 @@ class BrowserTabSwitcherOpened extends BrowserEvent {
 class BrowserTabSwitcherModeToggled extends BrowserEvent {
   const BrowserTabSwitcherModeToggled();
 }
+
+class BrowserBottomBarVisibilityChanged extends BrowserEvent {
+  final bool isVisible;
+  const BrowserBottomBarVisibilityChanged(this.isVisible);
+
+  @override
+  List<Object?> get props => [isVisible];
+}

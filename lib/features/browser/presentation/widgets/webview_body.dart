@@ -266,6 +266,8 @@ class _PrivateEmptyStateView extends StatelessWidget {
   }
 }
 
+enum _GestureType { undecided, horizontal, vertical }
+
 class BrowserGestureNavigator extends StatefulWidget {
   final BrowserTab tab;
   final BrowserBloc bloc;
@@ -284,9 +286,14 @@ class BrowserGestureNavigator extends StatefulWidget {
 }
 
 class _BrowserGestureNavigatorState extends State<BrowserGestureNavigator> {
+  static const double bottomBarScrollThreshold = 40.0;
   Offset? _startPosition;
   bool _isGestureRejected = false;
   bool _hasNavigated = false;
+
+  double _accumulatedScroll = 0.0;
+  bool? _isScrollDirectionDown;
+  _GestureType _gestureType = _GestureType.undecided;
 
   @override
   Widget build(BuildContext context) {
@@ -300,21 +307,85 @@ class _BrowserGestureNavigatorState extends State<BrowserGestureNavigator> {
         _startPosition = event.localPosition;
         _isGestureRejected = false;
         _hasNavigated = false;
+        _gestureType = _GestureType.undecided;
+        _accumulatedScroll = 0.0;
       },
       onPointerMove: (PointerMoveEvent event) {
-        if (_isGestureRejected || _hasNavigated || _startPosition == null) {
-          return;
-        }
+        if (_startPosition == null) return;
 
         final dx = event.localPosition.dx - _startPosition!.dx;
         final dy = event.localPosition.dy - _startPosition!.dy;
 
-        // If diagonal movement is vertical-dominant, reject this gesture early
-        if (dy.abs() > dx.abs() && dy.abs() > 20) {
-          _isGestureRejected = true;
+        // 1. Determine gesture type if undecided
+        if (_gestureType == _GestureType.undecided) {
+          if (dx.abs() > 10 || dy.abs() > 10) {
+            if (dy.abs() > dx.abs()) {
+              _gestureType = _GestureType.vertical;
+              _isGestureRejected = true; // Reject swipe navigation gesture
+            } else {
+              _gestureType = _GestureType.horizontal;
+            }
+          }
+        }
+
+        // 2. Track vertical scrolling delta
+        if (_gestureType == _GestureType.vertical) {
+          final deltaY = event.delta.dy;
+          if (deltaY.abs() > 0.5) {
+            final currentScrollDown = deltaY < 0; // Finger moves up -> scroll down
+            
+            if (_isScrollDirectionDown != currentScrollDown) {
+              _isScrollDirectionDown = currentScrollDown;
+              _accumulatedScroll = 0.0;
+            }
+            
+            _accumulatedScroll += deltaY.abs();
+            
+            if (_accumulatedScroll >= bottomBarScrollThreshold) {
+              _accumulatedScroll = 0.0;
+              final currentVisible = widget.bloc.state.isBottomBarVisible;
+              if (currentScrollDown && currentVisible) {
+                widget.bloc.add(const BrowserBottomBarVisibilityChanged(false));
+              } else if (!currentScrollDown && !currentVisible) {
+                widget.bloc.add(const BrowserBottomBarVisibilityChanged(true));
+              }
+            }
+          }
+        }
+
+        if (_isGestureRejected || _hasNavigated) {
+          return;
+        }
+      },
+      onPointerSignal: (PointerSignalEvent signal) {
+        if (signal is PointerScrollEvent) {
+          final deltaY = signal.scrollDelta.dy;
+          if (deltaY.abs() > 2.0) {
+            final currentScrollDown = deltaY > 0;
+            
+            if (_isScrollDirectionDown != currentScrollDown) {
+              _isScrollDirectionDown = currentScrollDown;
+              _accumulatedScroll = 0.0;
+            }
+            
+            _accumulatedScroll += deltaY.abs();
+            
+            if (_accumulatedScroll >= bottomBarScrollThreshold) {
+              _accumulatedScroll = 0.0;
+              final currentVisible = widget.bloc.state.isBottomBarVisible;
+              if (currentScrollDown && currentVisible) {
+                widget.bloc.add(const BrowserBottomBarVisibilityChanged(false));
+              } else if (!currentScrollDown && !currentVisible) {
+                widget.bloc.add(const BrowserBottomBarVisibilityChanged(true));
+              }
+            }
+          }
         }
       },
       onPointerUp: (PointerUpEvent event) async {
+        _gestureType = _GestureType.undecided;
+        _accumulatedScroll = 0.0;
+
         if (_isGestureRejected || _hasNavigated || _startPosition == null) {
           _startPosition = null;
           return;
