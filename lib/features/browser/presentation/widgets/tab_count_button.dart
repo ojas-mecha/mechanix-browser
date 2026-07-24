@@ -12,23 +12,34 @@ class TabCountButton extends StatelessWidget {
     final theme = Theme.of(context);
     final colors = theme.extension<AppColorsExtension>()!;
 
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
-      child: Container(
-        width: 24,
-        height: 24,
-        decoration: BoxDecoration(
-          border: Border.all(color: colors.searchBarText, width: 2),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          "$count",
-          style: TextStyle(
-            color: colors.searchBarText,
-            fontWeight: FontWeight.bold,
-            fontSize: 11,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(24),
+        splashColor: colors.closeButtonBackground,
+        hoverColor: colors.shortcutHoverBackground,
+        child: SizedBox(
+          width: 48,
+          height: 48,
+          child: Center(
+            child: Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                border: Border.all(color: colors.searchBarText, width: 2),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                "$count",
+                style: TextStyle(
+                  color: colors.searchBarText,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 11,
+                ),
+              ),
+            ),
           ),
         ),
       ),
