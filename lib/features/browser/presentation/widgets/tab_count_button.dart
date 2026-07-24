@@ -27,7 +27,7 @@ class TabCountButton extends StatelessWidget {
               width: 24,
               height: 24,
               decoration: BoxDecoration(
-                border: Border.all(color: colors.searchBarText, width: 2),
+                border: Border.all(color: colors.accentActive, width: 2),
                 borderRadius: BorderRadius.circular(6),
               ),
               alignment: Alignment.center,
