@@ -480,7 +480,7 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
         final activeTab = tabsList[index];
         if (isPrivate) {
           // For private tabs, closing the last one makes the collection empty and displays the private home splash page.
-          await activeTab.controller.dispose();
+          unawaited(activeTab.controller.dispose());
           emit(
             state.copyWith(privateTabs: const [], activePrivateTabIndex: -1),
           );
@@ -509,7 +509,7 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
       }
 
       final tabToClose = tabsList[index];
-      await tabToClose.controller.dispose();
+      unawaited(tabToClose.controller.dispose());
 
       final updatedTabs = List<BrowserTab>.from(tabsList)..removeAt(index);
 
