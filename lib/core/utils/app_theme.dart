@@ -187,7 +187,7 @@ class AppColorsExtension extends ThemeExtension<AppColorsExtension> {
     popupBottomBackground: Color(0xFF151515),
     popupBottomButtonBackground: Color(0xFF2C2C2E),
     popupBarrierColor: Colors.black26,
-    accentActive: Colors.blueAccent,
+    accentActive: Color(0xFFCACACA),
   );
 }
 

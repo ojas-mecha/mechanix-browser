@@ -166,7 +166,7 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
       onLoadEnd: (c, url) {
         AppLogger.i("onLoadEnd => $url");
         add(BrowserLoadEnded(tabId: tabId));
-        
+
         c.executeJavaScript('''
           (function() {
             let lastScrollY = window.scrollY;
@@ -691,7 +691,7 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
       final tabsList = isPrivate ? state.privateTabs : state.normalTabs;
 
       for (final tab in tabsList) {
-        await tab.controller.dispose();
+        unawaited(tab.controller.dispose());
       }
 
       if (isPrivate) {
@@ -867,9 +867,13 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
         updatedTabs[activeIndex] = updatedTab;
 
         if (isPrivate) {
-          emit(state.copyWith(privateTabs: updatedTabs, isBottomBarVisible: true));
+          emit(
+            state.copyWith(privateTabs: updatedTabs, isBottomBarVisible: true),
+          );
         } else {
-          emit(state.copyWith(normalTabs: updatedTabs, isBottomBarVisible: true));
+          emit(
+            state.copyWith(normalTabs: updatedTabs, isBottomBarVisible: true),
+          );
           _persistTabs();
         }
 
