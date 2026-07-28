@@ -19,6 +19,7 @@ class BottomIconButton extends StatelessWidget {
       hoverColor: colors.shortcutHoverBackground,
       highlightColor: colors.closeButtonBackground,
       style: IconButton.styleFrom(
+        backgroundColor: theme.scaffoldBackgroundColor,
         minimumSize: const Size(48, 48),
         padding: EdgeInsets.zero,
       ),

@@ -285,8 +285,17 @@ class BrowserGestureNavigator extends StatefulWidget {
       _BrowserGestureNavigatorState();
 }
 
-class _BrowserGestureNavigatorState extends State<BrowserGestureNavigator> {
+class _BrowserGestureNavigatorState extends State<BrowserGestureNavigator>
+    with SingleTickerProviderStateMixin {
   static const double bottomBarScrollThreshold = 40.0;
+
+  // Translation named constants
+  static const double dragResistance = 0.35;
+  static const double maxTranslation = 80.0;
+  static const double unavailableDragResistance = 0.05;
+  static const double maxUnavailableTranslation = 12.0;
+  static const Duration springBackDuration = Duration(milliseconds: 250);
+
   Offset? _startPosition;
   bool _isGestureRejected = false;
   bool _hasNavigated = false;
@@ -295,129 +304,241 @@ class _BrowserGestureNavigatorState extends State<BrowserGestureNavigator> {
   bool? _isScrollDirectionDown;
   _GestureType _gestureType = _GestureType.undecided;
 
+  double _translationX = 0.0;
+  bool _canGoBack = false;
+  bool _canGoForward = false;
+
+  late AnimationController _springController;
+  Animation<double>? _springAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _springController =
+        AnimationController(vsync: this, duration: springBackDuration)
+          ..addListener(() {
+            setState(() {
+              _translationX = _springAnimation?.value ?? 0.0;
+            });
+          });
+    _updateNavigationAvailability();
+  }
+
+  @override
+  void didUpdateWidget(covariant BrowserGestureNavigator oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.tab.id != oldWidget.tab.id ||
+        widget.tab.currentUrl != oldWidget.tab.currentUrl) {
+      _resetTranslationImmediate();
+      _updateNavigationAvailability();
+    }
+  }
+
+  @override
+  void dispose() {
+    _springController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _updateNavigationAvailability() async {
+    final canBack = await widget.tab.controller.canGoBack();
+    final canForward = await widget.tab.controller.canGoForward();
+    if (mounted) {
+      setState(() {
+        _canGoBack = canBack;
+        _canGoForward = canForward;
+      });
+    }
+  }
+
+  void _resetTranslationImmediate() {
+    _springController.stop();
+    if (_translationX != 0.0) {
+      setState(() {
+        _translationX = 0.0;
+      });
+    }
+  }
+
+  void _animateSpringBack() {
+    if (_translationX == 0.0) return;
+    _springAnimation = Tween<double>(begin: _translationX, end: 0.0).animate(
+      CurvedAnimation(parent: _springController, curve: Curves.easeOutCubic),
+    );
+    _springController.forward(from: 0.0);
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Listener(
-      behavior: HitTestBehavior.translucent,
-      onPointerDown: (PointerDownEvent event) {
-        if (event.kind != PointerDeviceKind.touch) {
-          _isGestureRejected = true;
-          return;
-        }
-        _startPosition = event.localPosition;
-        _isGestureRejected = false;
-        _hasNavigated = false;
-        _gestureType = _GestureType.undecided;
-        _accumulatedScroll = 0.0;
-      },
-      onPointerMove: (PointerMoveEvent event) {
-        if (_startPosition == null) return;
-
-        final dx = event.localPosition.dx - _startPosition!.dx;
-        final dy = event.localPosition.dy - _startPosition!.dy;
-
-        // 1. Determine gesture type if undecided
-        if (_gestureType == _GestureType.undecided) {
-          if (dx.abs() > 10 || dy.abs() > 10) {
-            if (dy.abs() > dx.abs()) {
-              _gestureType = _GestureType.vertical;
-              _isGestureRejected = true; // Reject swipe navigation gesture
-            } else {
-              _gestureType = _GestureType.horizontal;
+    return Container(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: Transform.translate(
+        key: const Key('gesture_navigator_transform'),
+        offset: Offset(_translationX, 0.0),
+        child: Listener(
+          behavior: HitTestBehavior.translucent,
+          onPointerDown: (PointerDownEvent event) {
+            if (event.kind != PointerDeviceKind.touch) {
+              _isGestureRejected = true;
+              return;
             }
-          }
-        }
+            _springController.stop();
+            _startPosition = event.localPosition;
+            _isGestureRejected = false;
+            _hasNavigated = false;
+            _gestureType = _GestureType.undecided;
+            _accumulatedScroll = 0.0;
+            _updateNavigationAvailability();
+          },
+          onPointerMove: (PointerMoveEvent event) {
+            if (_startPosition == null) return;
 
-        // 2. Track vertical scrolling delta
-        if (_gestureType == _GestureType.vertical) {
-          final deltaY = event.delta.dy;
-          if (deltaY.abs() > 0.5) {
-            final currentScrollDown =
-                deltaY < 0; // Finger moves up -> scroll down
+            final dx = event.localPosition.dx - _startPosition!.dx;
+            final dy = event.localPosition.dy - _startPosition!.dy;
 
-            if (_isScrollDirectionDown != currentScrollDown) {
-              _isScrollDirectionDown = currentScrollDown;
-              _accumulatedScroll = 0.0;
+            // 1. Determine gesture type if undecided
+            if (_gestureType == _GestureType.undecided) {
+              if (dx.abs() > 10 || dy.abs() > 10) {
+                if (dy.abs() > dx.abs()) {
+                  _gestureType = _GestureType.vertical;
+                  _isGestureRejected = true; // Reject swipe navigation gesture
+                } else {
+                  _gestureType = _GestureType.horizontal;
+                }
+              }
             }
 
-            _accumulatedScroll += deltaY.abs();
+            // 2. Track vertical scrolling delta
+            if (_gestureType == _GestureType.vertical) {
+              final deltaY = event.delta.dy;
+              if (deltaY.abs() > 0.5) {
+                final currentScrollDown =
+                    deltaY < 0; // Finger moves up -> scroll down
 
-            if (_accumulatedScroll >= bottomBarScrollThreshold) {
-              _accumulatedScroll = 0.0;
-              final currentVisible = widget.bloc.state.isBottomBarVisible;
-              if (currentScrollDown && currentVisible) {
-                widget.bloc.add(const BrowserBottomBarVisibilityChanged(false));
-              } else if (!currentScrollDown && !currentVisible) {
+                if (_isScrollDirectionDown != currentScrollDown) {
+                  _isScrollDirectionDown = currentScrollDown;
+                  _accumulatedScroll = 0.0;
+                }
+
+                _accumulatedScroll += deltaY.abs();
+
+                if (_accumulatedScroll >= bottomBarScrollThreshold) {
+                  _accumulatedScroll = 0.0;
+                  final currentVisible = widget.bloc.state.isBottomBarVisible;
+                  if (currentScrollDown && currentVisible) {
+                    widget.bloc.add(
+                      const BrowserBottomBarVisibilityChanged(false),
+                    );
+                  } else if (!currentScrollDown && !currentVisible) {
+                    widget.bloc.add(
+                      const BrowserBottomBarVisibilityChanged(true),
+                    );
+                  }
+                }
+              }
+            }
+
+            if (_isGestureRejected || _hasNavigated) {
+              return;
+            }
+
+            // 3. Track horizontal translation
+            if (_gestureType == _GestureType.horizontal) {
+              final isSwipingRight = dx > 0;
+              final isSwipingLeft = dx < 0;
+              final isAvailable = isSwipingRight
+                  ? _canGoBack
+                  : (isSwipingLeft ? _canGoForward : false);
+
+              double targetX;
+              if (!isAvailable) {
+                targetX = (dx * unavailableDragResistance).clamp(
+                  -maxUnavailableTranslation,
+                  maxUnavailableTranslation,
+                );
+              } else {
+                targetX = (dx * dragResistance).clamp(
+                  -maxTranslation,
+                  maxTranslation,
+                );
+              }
+
+              setState(() {
+                _translationX = targetX;
+              });
+            }
+          },
+          onPointerSignal: (PointerSignalEvent signal) {
+            if (signal is PointerScrollEvent) {
+              final deltaY = signal.scrollDelta.dy;
+              if (deltaY.abs() > 2.0) {
+                final currentScrollDown = deltaY > 0;
+
+                if (_isScrollDirectionDown != currentScrollDown) {
+                  _isScrollDirectionDown = currentScrollDown;
+                  _accumulatedScroll = 0.0;
+                }
+
+                _accumulatedScroll += deltaY.abs();
+
+                if (_accumulatedScroll >= bottomBarScrollThreshold) {
+                  _accumulatedScroll = 0.0;
+                  final currentVisible = widget.bloc.state.isBottomBarVisible;
+                  if (currentScrollDown && currentVisible) {
+                    widget.bloc.add(
+                      const BrowserBottomBarVisibilityChanged(false),
+                    );
+                  } else if (!currentScrollDown && !currentVisible) {
+                    widget.bloc.add(
+                      const BrowserBottomBarVisibilityChanged(true),
+                    );
+                  }
+                }
+              }
+            }
+          },
+          onPointerUp: (PointerUpEvent event) async {
+            final wasUndecided = _gestureType == _GestureType.undecided;
+            _gestureType = _GestureType.undecided;
+            _accumulatedScroll = 0.0;
+
+            if (!_isGestureRejected &&
+                !_hasNavigated &&
+                _startPosition != null) {
+              final direction = SwipeGestureClassifier.classify(
+                startPosition: _startPosition!,
+                endPosition: event.localPosition,
+              );
+
+              if (direction == SwipeDirection.back) {
+                final canGoBack = await widget.tab.controller.canGoBack();
+                if (canGoBack) {
+                  _hasNavigated = true;
+                  widget.bloc.add(const BrowserGoBackRequested());
+                }
+              } else if (direction == SwipeDirection.forward) {
+                final canGoForward = await widget.tab.controller.canGoForward();
+                if (canGoForward) {
+                  _hasNavigated = true;
+                  widget.bloc.add(const BrowserGoForwardRequested());
+                }
+              } else if (direction == SwipeDirection.none && wasUndecided) {
                 widget.bloc.add(const BrowserBottomBarVisibilityChanged(true));
               }
             }
-          }
-        }
 
-        if (_isGestureRejected || _hasNavigated) {
-          return;
-        }
-      },
-      onPointerSignal: (PointerSignalEvent signal) {
-        if (signal is PointerScrollEvent) {
-          final deltaY = signal.scrollDelta.dy;
-          if (deltaY.abs() > 2.0) {
-            final currentScrollDown = deltaY > 0;
-
-            if (_isScrollDirectionDown != currentScrollDown) {
-              _isScrollDirectionDown = currentScrollDown;
-              _accumulatedScroll = 0.0;
-            }
-
-            _accumulatedScroll += deltaY.abs();
-
-            if (_accumulatedScroll >= bottomBarScrollThreshold) {
-              _accumulatedScroll = 0.0;
-              final currentVisible = widget.bloc.state.isBottomBarVisible;
-              if (currentScrollDown && currentVisible) {
-                widget.bloc.add(const BrowserBottomBarVisibilityChanged(false));
-              } else if (!currentScrollDown && !currentVisible) {
-                widget.bloc.add(const BrowserBottomBarVisibilityChanged(true));
-              }
-            }
-          }
-        }
-      },
-      onPointerUp: (PointerUpEvent event) async {
-        _gestureType = _GestureType.undecided;
-        _accumulatedScroll = 0.0;
-
-        if (_isGestureRejected || _hasNavigated || _startPosition == null) {
-          _startPosition = null;
-          return;
-        }
-
-        final direction = SwipeGestureClassifier.classify(
-          startPosition: _startPosition!,
-          endPosition: event.localPosition,
-        );
-
-        _startPosition = null;
-
-        if (direction == SwipeDirection.back) {
-          _hasNavigated = true;
-          // TODO: Later need for implementation
-          // final canGoBack = await widget.tab.controller.canGoBack();
-          // if (canGoBack) {
-          //   widget.bloc.add(BrowserGoBackRequested());
-          // }
-          widget.bloc.add(BrowserGoBackRequested());
-        } else if (direction == SwipeDirection.forward) {
-          _hasNavigated = true;
-          // TODO: Later need for implementation
-          // final canGoForward = await widget.tab.controller.canGoForward();
-          // if (canGoForward) {
-          //   widget.bloc.add(BrowserGoForwardRequested());
-          // }
-          widget.bloc.add(BrowserGoForwardRequested());
-        }
-      },
-      child: widget.child,
+            _startPosition = null;
+            _animateSpringBack();
+          },
+          onPointerCancel: (PointerCancelEvent event) {
+            _gestureType = _GestureType.undecided;
+            _accumulatedScroll = 0.0;
+            _startPosition = null;
+            _animateSpringBack();
+          },
+          child: widget.child,
+        ),
+      ),
     );
   }
 }

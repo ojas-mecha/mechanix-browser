@@ -7,7 +7,9 @@ sealed class BrowserEvent extends Equatable {
   List<Object?> get props => [];
 }
 
-class BrowserInitialized extends BrowserEvent {}
+class BrowserInitialized extends BrowserEvent {
+  const BrowserInitialized();
+}
 
 class BrowserUrlLoadRequested extends BrowserEvent {
   final String url;
@@ -17,15 +19,25 @@ class BrowserUrlLoadRequested extends BrowserEvent {
   List<Object?> get props => [url];
 }
 
-class BrowserGoBackRequested extends BrowserEvent {}
+class BrowserGoBackRequested extends BrowserEvent {
+  const BrowserGoBackRequested();
+}
 
-class BrowserGoForwardRequested extends BrowserEvent {}
+class BrowserGoForwardRequested extends BrowserEvent {
+  const BrowserGoForwardRequested();
+}
 
-class BrowserReloadRequested extends BrowserEvent {}
+class BrowserReloadRequested extends BrowserEvent {
+  const BrowserReloadRequested();
+}
 
-class BrowserDevToolsRequested extends BrowserEvent {}
+class BrowserDevToolsRequested extends BrowserEvent {
+  const BrowserDevToolsRequested();
+}
 
-class BrowserGoHomeRequested extends BrowserEvent {}
+class BrowserGoHomeRequested extends BrowserEvent {
+  const BrowserGoHomeRequested();
+}
 
 class BrowserUrlChanged extends BrowserEvent {
   final String tabId;
@@ -162,8 +174,9 @@ class BrowserTabSwitcherModeToggled extends BrowserEvent {
 
 class BrowserBottomBarVisibilityChanged extends BrowserEvent {
   final bool isVisible;
-  const BrowserBottomBarVisibilityChanged(this.isVisible);
+  final bool? isInteracting;
+  const BrowserBottomBarVisibilityChanged(this.isVisible, {this.isInteracting});
 
   @override
-  List<Object?> get props => [isVisible];
+  List<Object?> get props => [isVisible, isInteracting];
 }

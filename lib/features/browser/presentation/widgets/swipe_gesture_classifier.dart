@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 enum SwipeDirection { back, forward, none }
 
 class SwipeGestureClassifier {
-  static const double navigationSwipeThreshold = 100.0;
+  static const double navigationSwipeThreshold = 150.0;
 
   static SwipeDirection classify({
     required Offset startPosition,
