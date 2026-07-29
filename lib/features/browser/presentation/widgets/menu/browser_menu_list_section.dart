@@ -56,25 +56,34 @@ class BrowserMenuListSection extends StatelessWidget {
             MenuPopupListTile(
               icon: Icons.history,
               label: l10n.history,
-              onTap: () {
+              onTap: () async {
+                final navigator = Navigator.of(context);
                 onDismiss();
-                Navigator.pushNamed(context, AppRoutes.history);
+                bloc.add(const BrowserWasHiddenRequested(true));
+                await navigator.pushNamed(AppRoutes.history);
+                bloc.add(const BrowserWasHiddenRequested(false));
               },
             ),
             MenuPopupListTile(
               icon: Icons.bookmark_border_rounded,
               label: l10n.bookmarks,
-              onTap: () {
+              onTap: () async {
+                final navigator = Navigator.of(context);
                 onDismiss();
-                Navigator.pushNamed(context, AppRoutes.bookmarks);
+                bloc.add(const BrowserWasHiddenRequested(true));
+                await navigator.pushNamed(AppRoutes.bookmarks);
+                bloc.add(const BrowserWasHiddenRequested(false));
               },
             ),
             MenuPopupListTile(
               icon: Icons.download_outlined,
               label: l10n.downloads,
-              onTap: () {
+              onTap: () async {
+                final navigator = Navigator.of(context);
                 onDismiss();
-                Navigator.pushNamed(context, AppRoutes.downloads);
+                bloc.add(const BrowserWasHiddenRequested(true));
+                await navigator.pushNamed(AppRoutes.downloads);
+                bloc.add(const BrowserWasHiddenRequested(false));
               },
             ),
             Padding(
@@ -110,9 +119,12 @@ class BrowserMenuListSection extends StatelessWidget {
             MenuPopupListTile(
               icon: Icons.settings_outlined,
               label: l10n.settings,
-              onTap: () {
+              onTap: () async {
+                final navigator = Navigator.of(context);
                 onDismiss();
-                Navigator.pushNamed(context, AppRoutes.settings);
+                bloc.add(const BrowserWasHiddenRequested(true));
+                await navigator.pushNamed(AppRoutes.settings);
+                bloc.add(const BrowserWasHiddenRequested(false));
               },
             ),
           ],
