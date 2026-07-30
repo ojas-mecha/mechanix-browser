@@ -1278,7 +1278,7 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
         await activeTab.controller.setClientFocus(!event.isHidden);
       }
     } catch (e, stackTrace) {
-      AppLogger.e("Error setting wasHidden state", error: e, stack: stackTrace);
+      AppLogger.w("Error setting wasHidden state: $e $stackTrace");
     }
   }
 

@@ -28,11 +28,14 @@ class _BrowserBottomBarState extends State<BrowserBottomBar> {
   @override
   void initState() {
     super.initState();
+    // Listen for focus changes on the URL address bar input field
     _focusNode.addListener(_onFocusChange);
 
     final bloc = context.read<BrowserBloc>();
     final state = bloc.state;
     _lastUrl = state.currentUrl;
+
+    // Display empty text if on home page, otherwise show page title (or fallback to URL)
     if (state.isHomePage) {
       _textController.text = '';
     } else {
@@ -50,6 +53,7 @@ class _BrowserBottomBarState extends State<BrowserBottomBar> {
     final state = bloc.state;
 
     if (_focusNode.hasFocus) {
+      // When focused: display full current URL and select all text for easy editing
       if (!state.isHomePage) {
         _textController.text = state.currentUrl;
         _textController.selection = TextSelection(
@@ -57,12 +61,16 @@ class _BrowserBottomBarState extends State<BrowserBottomBar> {
           extentOffset: _textController.text.length,
         );
       }
+      // Show search suggestions overlay
       _showOverlay();
       bloc.add(BrowserSearchQueryChanged(_textController.text));
+
+      // keep bottom bar visible during user interaction
       context.read<BrowserBloc>().add(
         const BrowserBottomBarVisibilityChanged(true, isInteracting: true),
       );
     } else {
+      // When unfocused: restore display title (or empty string if on home page)
       if (state.isHomePage) {
         _textController.text = '';
       } else {
@@ -154,7 +162,7 @@ class _BrowserBottomBarState extends State<BrowserBottomBar> {
                 child: BlocProvider.value(
                   value: bloc,
                   child: BrowserMenuPopupContent(
-                    onDismiss: _hideMenu,
+                    hideMenu: _hideMenu,
                     onFindInPage: () {
                       _hideMenu();
                       _focusNode.requestFocus();

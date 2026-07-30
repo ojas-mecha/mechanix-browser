@@ -7,13 +7,13 @@ import 'menu_popup_button.dart';
 
 class BrowserMenuBottomBar extends StatelessWidget {
   final BrowserState state;
-  final VoidCallback onDismiss;
+  final VoidCallback hideMenu; // hide pop up menu
   final VoidCallback? onFindInPage;
 
   const BrowserMenuBottomBar({
     super.key,
     required this.state,
-    required this.onDismiss,
+    required this.hideMenu,
     this.onFindInPage,
   });
 
@@ -34,7 +34,7 @@ class BrowserMenuBottomBar extends StatelessWidget {
           MenuPopupButton(
             icon: Icons.chevron_left_rounded,
             onTap: () {
-              onDismiss();
+              hideMenu();
               if (state.isInitialized) {
                 context.read<BrowserBloc>().add(BrowserGoBackRequested());
               }
@@ -43,7 +43,7 @@ class BrowserMenuBottomBar extends StatelessWidget {
           MenuPopupButton(
             icon: Icons.chevron_right_rounded,
             onTap: () {
-              onDismiss();
+              hideMenu();
               if (state.isInitialized) {
                 context.read<BrowserBloc>().add(BrowserGoForwardRequested());
               }
@@ -52,7 +52,7 @@ class BrowserMenuBottomBar extends StatelessWidget {
           MenuPopupButton(
             icon: Icons.refresh_rounded,
             onTap: () {
-              onDismiss();
+              hideMenu();
               if (state.isInitialized) {
                 context.read<BrowserBloc>().add(BrowserReloadRequested());
               }
@@ -79,7 +79,7 @@ class BrowserMenuBottomBar extends StatelessWidget {
           MenuPopupButton(
             icon: Icons.search_rounded,
             onTap: () {
-              onDismiss();
+              hideMenu();
               onFindInPage?.call();
             },
           ),

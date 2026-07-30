@@ -7,12 +7,12 @@ import 'menu/browser_menu_bottom_bar.dart';
 import 'menu/browser_menu_list_section.dart';
 
 class BrowserMenuPopupContent extends StatefulWidget {
-  final VoidCallback onDismiss;
+  final VoidCallback hideMenu; // hide pop up menu
   final VoidCallback? onFindInPage;
 
   const BrowserMenuPopupContent({
     super.key,
-    required this.onDismiss,
+    required this.hideMenu,
     this.onFindInPage,
   });
 
@@ -59,12 +59,12 @@ class _BrowserMenuPopupContentState extends State<BrowserMenuPopupContent> {
                 state: state,
                 isDesktopSite: isDesktopSite,
                 onToggleDesktopSite: _toggleDesktopSite,
-                onDismiss: widget.onDismiss,
+                hideMenu: widget.hideMenu,
               ),
               Divider(color: colors.panelBorder, height: 1, thickness: 1),
               BrowserMenuBottomBar(
                 state: state,
-                onDismiss: widget.onDismiss,
+                hideMenu: widget.hideMenu,
                 onFindInPage: widget.onFindInPage,
               ),
             ],

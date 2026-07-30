@@ -12,25 +12,25 @@ class BrowserMenuListSection extends StatelessWidget {
   final BrowserState state;
   final bool isDesktopSite;
   final ValueChanged<bool> onToggleDesktopSite;
-  final VoidCallback onDismiss;
+  final VoidCallback hideMenu; // hide pop up menu
 
   const BrowserMenuListSection({
     super.key,
     required this.state,
     required this.isDesktopSite,
     required this.onToggleDesktopSite,
-    required this.onDismiss,
+    required this.hideMenu,
   });
 
   void _handleNewTab(BuildContext context) {
-    onDismiss();
+    hideMenu();
     if (state.isInitialized) {
       context.read<BrowserBloc>().add(const BrowserNewTabRequested());
     }
   }
 
   void _handleNewPrivateTab(BuildContext context) {
-    onDismiss();
+    hideMenu();
     if (state.isInitialized) {
       context.read<BrowserBloc>().add(
         const BrowserNewTabRequested(isPrivate: true),
@@ -44,7 +44,7 @@ class BrowserMenuListSection extends StatelessWidget {
   ) async {
     try {
       final navigator = Navigator.of(context);
-      onDismiss();
+      hideMenu();
       context.read<BrowserBloc>().add(const BrowserWasHiddenRequested(true));
       await navigator.pushNamed(routeName);
     } catch (e, stackTrace) {
@@ -61,7 +61,7 @@ class BrowserMenuListSection extends StatelessWidget {
   }
 
   void _handleShare() {
-    onDismiss();
+    hideMenu(); // TODO: we implement share functionality here
   }
 
   void _handleToggleDesktopSite() {
