@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mechanix_browser/core/routes/app_routes.dart';
+import 'package:mechanix_browser/core/utils/app_logger.dart';
 import 'package:mechanix_browser/core/utils/app_theme.dart';
 import 'package:mechanix_browser/features/browser/bloc/browser_bloc.dart';
 import 'package:mechanix_browser/l10n/app_localizations.dart';
@@ -7,7 +9,6 @@ import 'package:mechanix_browser/l10n/app_localizations.dart';
 import 'menu_popup_list_tile.dart';
 
 class BrowserMenuListSection extends StatelessWidget {
-  final BrowserBloc bloc;
   final BrowserState state;
   final bool isDesktopSite;
   final ValueChanged<bool> onToggleDesktopSite;
@@ -15,12 +16,57 @@ class BrowserMenuListSection extends StatelessWidget {
 
   const BrowserMenuListSection({
     super.key,
-    required this.bloc,
     required this.state,
     required this.isDesktopSite,
     required this.onToggleDesktopSite,
     required this.onDismiss,
   });
+
+  void _handleNewTab(BuildContext context) {
+    onDismiss();
+    if (state.isInitialized) {
+      context.read<BrowserBloc>().add(const BrowserNewTabRequested());
+    }
+  }
+
+  void _handleNewPrivateTab(BuildContext context) {
+    onDismiss();
+    if (state.isInitialized) {
+      context.read<BrowserBloc>().add(
+        const BrowserNewTabRequested(isPrivate: true),
+      );
+    }
+  }
+
+  Future<void> _handleNavigateToRoute(
+    BuildContext context,
+    String routeName,
+  ) async {
+    try {
+      final navigator = Navigator.of(context);
+      onDismiss();
+      context.read<BrowserBloc>().add(const BrowserWasHiddenRequested(true));
+      await navigator.pushNamed(routeName);
+    } catch (e, stackTrace) {
+      AppLogger.e(
+        'Error navigating to $routeName',
+        error: e,
+        stack: stackTrace,
+      );
+    } finally {
+      if (context.mounted) {
+        context.read<BrowserBloc>().add(const BrowserWasHiddenRequested(false));
+      }
+    }
+  }
+
+  void _handleShare() {
+    onDismiss();
+  }
+
+  void _handleToggleDesktopSite() {
+    onToggleDesktopSite(!isDesktopSite);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,55 +82,27 @@ class BrowserMenuListSection extends StatelessWidget {
             MenuPopupListTile(
               icon: Icons.add,
               label: l10n.newTab,
-              onTap: () {
-                onDismiss();
-                if (state.isInitialized) {
-                  bloc.add(const BrowserNewTabRequested());
-                }
-              },
+              onTap: () => _handleNewTab(context),
             ),
             MenuPopupListTile(
               icon: Icons.visibility_off_outlined,
               label: l10n.newPrivateTab,
-              onTap: () {
-                onDismiss();
-                if (state.isInitialized) {
-                  bloc.add(const BrowserNewTabRequested(isPrivate: true));
-                }
-              },
+              onTap: () => _handleNewPrivateTab(context),
             ),
             MenuPopupListTile(
               icon: Icons.history,
               label: l10n.history,
-              onTap: () async {
-                final navigator = Navigator.of(context);
-                onDismiss();
-                bloc.add(const BrowserWasHiddenRequested(true));
-                await navigator.pushNamed(AppRoutes.history);
-                bloc.add(const BrowserWasHiddenRequested(false));
-              },
+              onTap: () => _handleNavigateToRoute(context, AppRoutes.history),
             ),
             MenuPopupListTile(
               icon: Icons.bookmark_border_rounded,
               label: l10n.bookmarks,
-              onTap: () async {
-                final navigator = Navigator.of(context);
-                onDismiss();
-                bloc.add(const BrowserWasHiddenRequested(true));
-                await navigator.pushNamed(AppRoutes.bookmarks);
-                bloc.add(const BrowserWasHiddenRequested(false));
-              },
+              onTap: () => _handleNavigateToRoute(context, AppRoutes.bookmarks),
             ),
             MenuPopupListTile(
               icon: Icons.download_outlined,
               label: l10n.downloads,
-              onTap: () async {
-                final navigator = Navigator.of(context);
-                onDismiss();
-                bloc.add(const BrowserWasHiddenRequested(true));
-                await navigator.pushNamed(AppRoutes.downloads);
-                bloc.add(const BrowserWasHiddenRequested(false));
-              },
+              onTap: () => _handleNavigateToRoute(context, AppRoutes.downloads),
             ),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -97,9 +115,7 @@ class BrowserMenuListSection extends StatelessWidget {
             MenuPopupListTile(
               icon: Icons.share_outlined,
               label: l10n.share,
-              onTap: () {
-                onDismiss();
-              },
+              onTap: _handleShare,
             ),
             MenuPopupListTile(
               icon: Icons.computer_outlined,
@@ -112,20 +128,12 @@ class BrowserMenuListSection extends StatelessWidget {
                   onToggleDesktopSite(val ?? false);
                 },
               ),
-              onTap: () {
-                onToggleDesktopSite(!isDesktopSite);
-              },
+              onTap: _handleToggleDesktopSite,
             ),
             MenuPopupListTile(
               icon: Icons.settings_outlined,
               label: l10n.settings,
-              onTap: () async {
-                final navigator = Navigator.of(context);
-                onDismiss();
-                bloc.add(const BrowserWasHiddenRequested(true));
-                await navigator.pushNamed(AppRoutes.settings);
-                bloc.add(const BrowserWasHiddenRequested(false));
-              },
+              onTap: () => _handleNavigateToRoute(context, AppRoutes.settings),
             ),
           ],
         ),

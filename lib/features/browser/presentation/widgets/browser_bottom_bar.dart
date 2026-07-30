@@ -151,13 +151,15 @@ class _BrowserBottomBarState extends State<BrowserBottomBar> {
               width: 320,
               child: Material(
                 color: Colors.transparent,
-                child: BrowserMenuPopupContent(
-                  bloc: bloc,
-                  onDismiss: _hideMenu,
-                  onFindInPage: () {
-                    _hideMenu();
-                    _focusNode.requestFocus();
-                  },
+                child: BlocProvider.value(
+                  value: bloc,
+                  child: BrowserMenuPopupContent(
+                    onDismiss: _hideMenu,
+                    onFindInPage: () {
+                      _hideMenu();
+                      _focusNode.requestFocus();
+                    },
+                  ),
                 ),
               ),
             ),
