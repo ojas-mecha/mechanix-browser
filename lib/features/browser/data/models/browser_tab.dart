@@ -10,6 +10,7 @@ class BrowserTab extends Equatable {
   final bool isHomePage;
   final bool isLoading;
   final bool isPrivate;
+  final String? imagePath;
   final BrowserErrorInfo? errorInfo;
 
   const BrowserTab({
@@ -20,6 +21,7 @@ class BrowserTab extends Equatable {
     required this.isHomePage,
     required this.isLoading,
     this.isPrivate = false,
+    this.imagePath,
     this.errorInfo,
   });
 
@@ -31,6 +33,8 @@ class BrowserTab extends Equatable {
     bool? isHomePage,
     bool? isLoading,
     bool? isPrivate,
+    String? imagePath,
+    int? screenshotVersion,
     BrowserErrorInfo? errorInfo,
     bool clearErrorInfo = false,
   }) {
@@ -42,6 +46,7 @@ class BrowserTab extends Equatable {
       isHomePage: isHomePage ?? this.isHomePage,
       isLoading: isLoading ?? this.isLoading,
       isPrivate: isPrivate ?? this.isPrivate,
+      imagePath: imagePath ?? this.imagePath,
       errorInfo: clearErrorInfo ? null : (errorInfo ?? this.errorInfo),
     );
   }
@@ -55,6 +60,7 @@ class BrowserTab extends Equatable {
     isHomePage,
     isLoading,
     isPrivate,
+    imagePath,
     errorInfo,
   ];
 }
