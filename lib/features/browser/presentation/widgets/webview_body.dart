@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mechanix_browser/core/utils/app_theme.dart';
 import 'package:mechanix_browser/features/browser/bloc/browser_bloc.dart';
 import 'package:mechanix_browser/features/browser/data/models/browser_tab.dart';
+import 'package:mechanix_browser/features/browser/presentation/widgets/browser_error_page.dart';
 import 'package:mechanix_browser/features/browser/presentation/widgets/home_page_body.dart';
 import 'package:mechanix_browser/features/browser/presentation/widgets/swipe_gesture_classifier.dart';
 
@@ -74,6 +75,19 @@ class BrowserWebviewBody extends StatelessWidget {
                     child: Material(
                       color: Theme.of(context).scaffoldBackgroundColor,
                       child: const BrowserHomePageBody(),
+                    ),
+                  ),
+                // error page body
+                if (!tab.isHomePage && tab.errorInfo != null)
+                  Positioned.fill(
+                    child: BrowserGestureNavigator(
+                      tab: tab,
+                      bloc: context.read<BrowserBloc>(),
+                      child: BrowserErrorPage(
+                        tab: tab,
+                        errorInfo: tab.errorInfo!,
+                        bloc: context.read<BrowserBloc>(),
+                      ),
                     ),
                   ),
                 if (!tab.isHomePage)
