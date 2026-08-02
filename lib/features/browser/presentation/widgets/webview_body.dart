@@ -54,7 +54,7 @@ class BrowserWebviewBody extends StatelessWidget {
                       valueListenable: tab.controller,
                       builder: (context, value, child) {
                         if (!tab.controller.value) {
-                          return tab.controller.loadingWidget;
+                          return Expanded(child: tab.controller.loadingWidget);
                         }
                         if (tab.isHomePage) {
                           return Expanded(child: tab.controller.webviewWidget);
