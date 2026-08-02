@@ -21,6 +21,36 @@ class AppLocalizationsEn extends AppLocalizations {
   String get newPrivateTab => 'New Private Tab';
 
   @override
+  String appTitlePrivate(String title) {
+    return '$title (Private)';
+  }
+
+  @override
+  String get privateBrowsing => 'Private Browsing';
+
+  @override
+  String get privateBrowsingDescription =>
+      'Pages you view in private tabs won\'t be saved in your history, cookie store, or search history after you close all of your private tabs. Bookmarks and downloads will still be kept.';
+
+  @override
+  String get privateTabs => 'Private Tabs';
+
+  @override
+  String get normalTabs => 'Normal Tabs';
+
+  @override
+  String get noPrivateTabs => 'No Private Tabs';
+
+  @override
+  String get noTabs => 'No Tabs';
+
+  @override
+  String get switchToNormalTabs => 'Switch to Normal Tabs';
+
+  @override
+  String get switchToPrivateTabs => 'Switch to Private Tabs';
+
+  @override
   String get history => 'History';
 
   @override
@@ -34,6 +64,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get desktopSite => 'Desktop site';
+
+  @override
+  String get developerTools => 'Developer tools';
 
   @override
   String get settings => 'Settings';

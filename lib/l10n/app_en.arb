@@ -15,6 +15,47 @@
   "@newPrivateTab": {
     "description": "Menu option to open a new private tab"
   },
+  "appTitlePrivate": "{title} (Private)",
+  "@appTitlePrivate": {
+    "description": "Title of the application in private mode",
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "privateBrowsing": "Private Browsing",
+  "@privateBrowsing": {
+    "description": "Title for private browsing empty state"
+  },
+  "privateBrowsingDescription": "Pages you view in private tabs won't be saved in your history, cookie store, or search history after you close all of your private tabs. Bookmarks and downloads will still be kept.",
+  "@privateBrowsingDescription": {
+    "description": "Description for private browsing empty state"
+  },
+  "privateTabs": "Private Tabs",
+  "@privateTabs": {
+    "description": "Label for private tabs section"
+  },
+  "normalTabs": "Normal Tabs",
+  "@normalTabs": {
+    "description": "Label for normal tabs section"
+  },
+  "noPrivateTabs": "No Private Tabs",
+  "@noPrivateTabs": {
+    "description": "Empty state text for private tabs"
+  },
+  "noTabs": "No Tabs",
+  "@noTabs": {
+    "description": "Empty state text for normal tabs"
+  },
+  "switchToNormalTabs": "Switch to Normal Tabs",
+  "@switchToNormalTabs": {
+    "description": "Tooltip for switching to normal tabs"
+  },
+  "switchToPrivateTabs": "Switch to Private Tabs",
+  "@switchToPrivateTabs": {
+    "description": "Tooltip for switching to private tabs"
+  },
   "history": "History",
   "@history": {
     "description": "History feature name"
@@ -34,6 +75,10 @@
   "desktopSite": "Desktop site",
   "@desktopSite": {
     "description": "Desktop site checkbox option"
+  },
+  "developerTools": "Developer tools",
+  "@developerTools": {
+    "description": "Developer tools menu option"
   },
   "settings": "Settings",
   "@settings": {

@@ -7,6 +7,7 @@ import 'package:mechanix_browser/features/browser/data/models/browser_tab.dart';
 import 'package:mechanix_browser/features/browser/presentation/widgets/browser_error_page.dart';
 import 'package:mechanix_browser/features/browser/presentation/widgets/home_page_body.dart';
 import 'package:mechanix_browser/features/browser/presentation/widgets/swipe_gesture_classifier.dart';
+import 'package:mechanix_browser/l10n/app_localizations.dart';
 
 class BrowserWebviewBody extends StatelessWidget {
   const BrowserWebviewBody({super.key});
@@ -226,6 +227,7 @@ class _PrivateEmptyStateView extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.extension<AppColorsExtension>()!;
+    final l10n = AppLocalizations.of(context)!;
 
     return Container(
       color: theme.scaffoldBackgroundColor,
@@ -253,7 +255,7 @@ class _PrivateEmptyStateView extends StatelessWidget {
               ),
               const SizedBox(height: 28),
               Text(
-                'Private Browsing',
+                l10n.privateBrowsing,
                 style: theme.textTheme.headlineLarge?.copyWith(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -263,7 +265,7 @@ class _PrivateEmptyStateView extends StatelessWidget {
               Container(
                 constraints: const BoxConstraints(maxWidth: 420),
                 child: Text(
-                  'Pages you view in private tabs won\'t be saved in your history, cookie store, or search history after you close all of your private tabs. Bookmarks and downloads will still be kept.',
+                  l10n.privateBrowsingDescription,
                   textAlign: TextAlign.center,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: colors.textSecondary,

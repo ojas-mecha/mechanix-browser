@@ -117,6 +117,60 @@ abstract class AppLocalizations {
   /// **'New Private Tab'**
   String get newPrivateTab;
 
+  /// Title of the application in private mode
+  ///
+  /// In en, this message translates to:
+  /// **'{title} (Private)'**
+  String appTitlePrivate(String title);
+
+  /// Title for private browsing empty state
+  ///
+  /// In en, this message translates to:
+  /// **'Private Browsing'**
+  String get privateBrowsing;
+
+  /// Description for private browsing empty state
+  ///
+  /// In en, this message translates to:
+  /// **'Pages you view in private tabs won\'t be saved in your history, cookie store, or search history after you close all of your private tabs. Bookmarks and downloads will still be kept.'**
+  String get privateBrowsingDescription;
+
+  /// Label for private tabs section
+  ///
+  /// In en, this message translates to:
+  /// **'Private Tabs'**
+  String get privateTabs;
+
+  /// Label for normal tabs section
+  ///
+  /// In en, this message translates to:
+  /// **'Normal Tabs'**
+  String get normalTabs;
+
+  /// Empty state text for private tabs
+  ///
+  /// In en, this message translates to:
+  /// **'No Private Tabs'**
+  String get noPrivateTabs;
+
+  /// Empty state text for normal tabs
+  ///
+  /// In en, this message translates to:
+  /// **'No Tabs'**
+  String get noTabs;
+
+  /// Tooltip for switching to normal tabs
+  ///
+  /// In en, this message translates to:
+  /// **'Switch to Normal Tabs'**
+  String get switchToNormalTabs;
+
+  /// Tooltip for switching to private tabs
+  ///
+  /// In en, this message translates to:
+  /// **'Switch to Private Tabs'**
+  String get switchToPrivateTabs;
+
   /// History feature name
   ///
   /// In en, this message translates to:
@@ -146,6 +200,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Desktop site'**
   String get desktopSite;
+
+  /// Developer tools menu option
+  ///
+  /// In en, this message translates to:
+  /// **'Developer tools'**
+  String get developerTools;
 
   /// Settings feature name
   ///
