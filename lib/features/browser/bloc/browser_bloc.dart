@@ -1377,6 +1377,7 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
     }
   }
 
+  /// Updates the target tab state with error details for main frame navigation failures.
   void _onLoadErrorOccurred(
     BrowserLoadErrorOccurred event,
     Emitter<BrowserState> emit,
@@ -1387,6 +1388,7 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
         return;
       }
 
+      // Search for tab index in normal and private tab lists
       int index = state.normalTabs.indexWhere((t) => t.id == event.tabId);
       bool isPrivate = false;
       if (index == -1) {
@@ -1396,12 +1398,14 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
       if (index == -1) return;
 
       final tabsList = isPrivate ? state.privateTabs : state.normalTabs;
+
       final errorInfo = BrowserErrorInfo(
         errorCode: event.errorCode,
         errorText: event.errorText,
         failedUrl: event.failedUrl,
       );
 
+      // Update tab with error details and clear loading flag
       final updatedTab = tabsList[index].copyWith(
         errorInfo: errorInfo,
         currentUrl: event.failedUrl,
