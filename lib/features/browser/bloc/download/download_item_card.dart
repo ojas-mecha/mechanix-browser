@@ -135,9 +135,9 @@ class _DownloadMetaText extends StatelessWidget {
           style: theme.textTheme.bodySmall?.copyWith(),
           children: [
             TextSpan(text: '${download.domain} · '),
-            const TextSpan(
-              text: 'Interrupted',
-              style: TextStyle(
+            TextSpan(
+              text: l10n.interrupted,
+              style: const TextStyle(
                 color: Color(0xFFF0A020),
                 fontWeight: FontWeight.w500,
               ),
@@ -167,18 +167,17 @@ class _DownloadActionButtons extends StatelessWidget {
 
   void _showDeleteDialog(BuildContext context) {
     final targetId = download.id != 0 ? download.id : download.downloadId;
+    final l10n = AppLocalizations.of(context)!;
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Remove Download'),
-        content: Text(
-          'Do you want to remove "${download.filename}" from history or delete the downloaded file from disk?',
-        ),
+        title: Text(l10n.removeDownloadTitle),
+        content: Text(l10n.removeDownloadDialogContent(download.filename)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () {
@@ -187,7 +186,7 @@ class _DownloadActionButtons extends StatelessWidget {
                 DownloadRemoveRequested(targetId, deleteFile: false),
               );
             },
-            child: const Text('Remove History Only'),
+            child: Text(l10n.removeHistoryOnly),
           ),
           TextButton(
             style: TextButton.styleFrom(
@@ -199,7 +198,7 @@ class _DownloadActionButtons extends StatelessWidget {
                 DownloadRemoveRequested(targetId, deleteFile: true),
               );
             },
-            child: const Text('Delete File & History'),
+            child: Text(l10n.deleteFileAndHistory),
           ),
         ],
       ),
@@ -214,7 +213,8 @@ class _DownloadActionButtons extends StatelessWidget {
     final activeController = browserBloc.state.activeTab?.controller;
     final targetId = download.id != 0 ? download.id : download.downloadId;
 
-    if (download.status == DownloadStatus.downloading) {
+    if (download.status == DownloadStatus.downloading ||
+        download.status == DownloadStatus.pending) {
       return Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -254,14 +254,14 @@ class _DownloadActionButtons extends StatelessWidget {
         children: [
           _DownloadActionButton(
             icon: Icons.refresh_rounded,
-            tooltip: 'Resume / Retry',
+            tooltip: l10n.resumeOrRetry,
             onPressed: () => bloc.add(
               DownloadResumeRequested(targetId, controller: activeController),
             ),
           ),
           _DownloadActionButton(
             icon: Icons.close_rounded,
-            tooltip: 'Remove',
+            tooltip: l10n.remove,
             onPressed: () => _showDeleteDialog(context),
           ),
         ],
@@ -275,14 +275,14 @@ class _DownloadActionButtons extends StatelessWidget {
         children: [
           _DownloadActionButton(
             icon: Icons.refresh_rounded,
-            tooltip: 'Retry',
+            tooltip: l10n.retry,
             onPressed: () => bloc.add(
               DownloadRetryRequested(download, controller: activeController),
             ),
           ),
           _DownloadActionButton(
             icon: Icons.close_rounded,
-            tooltip: 'Remove',
+            tooltip: l10n.remove,
             onPressed: () => _showDeleteDialog(context),
           ),
         ],
@@ -301,7 +301,7 @@ class _DownloadActionButtons extends StatelessWidget {
         ),
         _DownloadActionButton(
           icon: Icons.close_rounded,
-          tooltip: 'Remove',
+          tooltip: l10n.remove,
           onPressed: () => _showDeleteDialog(context),
         ),
       ],

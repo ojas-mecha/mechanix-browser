@@ -441,6 +441,84 @@ abstract class AppLocalizations {
   /// **'Open Folder'**
   String get openFolder;
 
+  /// Dialog title for clearing download records
+  ///
+  /// In en, this message translates to:
+  /// **'Clear Downloads'**
+  String get clearDownloadsTitle;
+
+  /// Dialog content explanation for clearing downloads
+  ///
+  /// In en, this message translates to:
+  /// **'Do you want to clear download records from history or also delete downloaded files from disk?'**
+  String get clearDownloadsDialogContent;
+
+  /// Button label to clear download history without deleting files
+  ///
+  /// In en, this message translates to:
+  /// **'Clear History Only'**
+  String get clearHistoryOnly;
+
+  /// Button label to delete files from disk and history records
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Files & History'**
+  String get deleteFilesAndHistory;
+
+  /// Dialog title for removing a single download
+  ///
+  /// In en, this message translates to:
+  /// **'Remove Download'**
+  String get removeDownloadTitle;
+
+  /// Dialog content for removing a single download
+  ///
+  /// In en, this message translates to:
+  /// **'Do you want to remove "{filename}" from history or delete the downloaded file from disk?'**
+  String removeDownloadDialogContent(String filename);
+
+  /// Button label to remove single download from history only
+  ///
+  /// In en, this message translates to:
+  /// **'Remove History Only'**
+  String get removeHistoryOnly;
+
+  /// Button label to delete single file from disk and history
+  ///
+  /// In en, this message translates to:
+  /// **'Delete File & History'**
+  String get deleteFileAndHistory;
+
+  /// Tooltip for resuming or retrying an interrupted download
+  ///
+  /// In en, this message translates to:
+  /// **'Resume / Retry'**
+  String get resumeOrRetry;
+
+  /// Tooltip for removing a download
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get remove;
+
+  /// Download status text for pending downloads
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get pending;
+
+  /// Download status text for interrupted downloads
+  ///
+  /// In en, this message translates to:
+  /// **'Interrupted'**
+  String get interrupted;
+
+  /// Download status text for paused downloads
+  ///
+  /// In en, this message translates to:
+  /// **'Paused'**
+  String get paused;
+
   /// Download status text for failed downloads
   ///
   /// In en, this message translates to:

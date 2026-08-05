@@ -192,6 +192,48 @@ class AppLocalizationsEn extends AppLocalizations {
   String get openFolder => 'Open Folder';
 
   @override
+  String get clearDownloadsTitle => 'Clear Downloads';
+
+  @override
+  String get clearDownloadsDialogContent =>
+      'Do you want to clear download records from history or also delete downloaded files from disk?';
+
+  @override
+  String get clearHistoryOnly => 'Clear History Only';
+
+  @override
+  String get deleteFilesAndHistory => 'Delete Files & History';
+
+  @override
+  String get removeDownloadTitle => 'Remove Download';
+
+  @override
+  String removeDownloadDialogContent(String filename) {
+    return 'Do you want to remove "$filename" from history or delete the downloaded file from disk?';
+  }
+
+  @override
+  String get removeHistoryOnly => 'Remove History Only';
+
+  @override
+  String get deleteFileAndHistory => 'Delete File & History';
+
+  @override
+  String get resumeOrRetry => 'Resume / Retry';
+
+  @override
+  String get remove => 'Remove';
+
+  @override
+  String get pending => 'Pending';
+
+  @override
+  String get interrupted => 'Interrupted';
+
+  @override
+  String get paused => 'Paused';
+
+  @override
   String get failed => 'Failed';
 
   @override

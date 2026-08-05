@@ -251,6 +251,63 @@
   "@openFolder": {
     "description": "Tooltip/button to open file folder"
   },
+  "clearDownloadsTitle": "Clear Downloads",
+  "@clearDownloadsTitle": {
+    "description": "Dialog title for clearing download records"
+  },
+  "clearDownloadsDialogContent": "Do you want to clear download records from history or also delete downloaded files from disk?",
+  "@clearDownloadsDialogContent": {
+    "description": "Dialog content explanation for clearing downloads"
+  },
+  "clearHistoryOnly": "Clear History Only",
+  "@clearHistoryOnly": {
+    "description": "Button label to clear download history without deleting files"
+  },
+  "deleteFilesAndHistory": "Delete Files & History",
+  "@deleteFilesAndHistory": {
+    "description": "Button label to delete files from disk and history records"
+  },
+  "removeDownloadTitle": "Remove Download",
+  "@removeDownloadTitle": {
+    "description": "Dialog title for removing a single download"
+  },
+  "removeDownloadDialogContent": "Do you want to remove \"{filename}\" from history or delete the downloaded file from disk?",
+  "@removeDownloadDialogContent": {
+    "description": "Dialog content for removing a single download",
+    "placeholders": {
+      "filename": {
+        "type": "String"
+      }
+    }
+  },
+  "removeHistoryOnly": "Remove History Only",
+  "@removeHistoryOnly": {
+    "description": "Button label to remove single download from history only"
+  },
+  "deleteFileAndHistory": "Delete File & History",
+  "@deleteFileAndHistory": {
+    "description": "Button label to delete single file from disk and history"
+  },
+  "resumeOrRetry": "Resume / Retry",
+  "@resumeOrRetry": {
+    "description": "Tooltip for resuming or retrying an interrupted download"
+  },
+  "remove": "Remove",
+  "@remove": {
+    "description": "Tooltip for removing a download"
+  },
+  "pending": "Pending",
+  "@pending": {
+    "description": "Download status text for pending downloads"
+  },
+  "interrupted": "Interrupted",
+  "@interrupted": {
+    "description": "Download status text for interrupted downloads"
+  },
+  "paused": "Paused",
+  "@paused": {
+    "description": "Download status text for paused downloads"
+  },
   "failed": "Failed",
   "@failed": {
     "description": "Download status text for failed downloads"

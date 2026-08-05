@@ -11,26 +11,25 @@ class DownloadsScreen extends StatelessWidget {
   const DownloadsScreen({super.key});
 
   void _showClearFinishedDialog(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Clear Downloads'),
-        content: const Text(
-          'Do you want to clear download records from history or also delete downloaded files from disk?',
-        ),
+        title: Text(l10n.clearDownloadsTitle),
+        content: Text(l10n.clearDownloadsDialogContent),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: Text(l10n.cancel),
           ),
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
               context.read<DownloadBloc>().add(
-                    const DownloadClearCompletedRequested(deleteFiles: false),
-                  );
+                const DownloadClearCompletedRequested(deleteFiles: false),
+              );
             },
-            child: const Text('Clear History Only'),
+            child: Text(l10n.clearHistoryOnly),
           ),
           TextButton(
             style: TextButton.styleFrom(
@@ -39,10 +38,10 @@ class DownloadsScreen extends StatelessWidget {
             onPressed: () {
               Navigator.pop(ctx);
               context.read<DownloadBloc>().add(
-                    const DownloadClearCompletedRequested(deleteFiles: true),
-                  );
+                const DownloadClearCompletedRequested(deleteFiles: true),
+              );
             },
-            child: const Text('Delete Files & History'),
+            child: Text(l10n.deleteFilesAndHistory),
           ),
         ],
       ),
