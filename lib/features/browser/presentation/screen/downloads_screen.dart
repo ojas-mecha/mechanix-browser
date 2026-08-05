@@ -10,6 +10,45 @@ import 'package:mechanix_browser/l10n/app_localizations.dart';
 class DownloadsScreen extends StatelessWidget {
   const DownloadsScreen({super.key});
 
+  void _showClearFinishedDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Clear Downloads'),
+        content: const Text(
+          'Do you want to clear download records from history or also delete downloaded files from disk?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.read<DownloadBloc>().add(
+                    const DownloadClearCompletedRequested(deleteFiles: false),
+                  );
+            },
+            child: const Text('Clear History Only'),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFFE54D42),
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.read<DownloadBloc>().add(
+                    const DownloadClearCompletedRequested(deleteFiles: true),
+                  );
+            },
+            child: const Text('Delete Files & History'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -45,9 +84,7 @@ class DownloadsScreen extends StatelessWidget {
                 child: IconButton(
                   icon: const Icon(Icons.delete_sweep_outlined),
                   tooltip: l10n.clearFinished,
-                  onPressed: () => context.read<DownloadBloc>().add(
-                    const DownloadClearCompletedRequested(),
-                  ),
+                  onPressed: () => _showClearFinishedDialog(context),
                 ),
               );
             },
@@ -113,7 +150,7 @@ class DownloadsScreen extends StatelessWidget {
             itemBuilder: (context, index) {
               final download = state.downloads[index];
               return DownloadItemCard(
-                key: ValueKey('download_${download.downloadId}'),
+                key: ValueKey('download_${download.downloadId}_${download.id}'),
                 download: download,
               );
             },

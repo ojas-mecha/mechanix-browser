@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:mechanix_browser/features/browser/data/models/download_entity.dart';
 
 enum DownloadStatus {
   pending,
@@ -7,11 +8,12 @@ enum DownloadStatus {
   completed,
   failed,
   cancelled,
+  interrupted,
 }
 
 class BrowserDownload extends Equatable {
-  final int downloadId;
-  final int browserId;
+  final int id; // Database Primary Key (0 if not persisted yet)
+  final int downloadId; // Ephemeral CEF Download Identifier
   final String url;
   final String filename;
   final String destinationPath;
@@ -25,8 +27,8 @@ class BrowserDownload extends Equatable {
   final String? errorMessage;
 
   const BrowserDownload({
+    this.id = 0,
     required this.downloadId,
-    required this.browserId,
     required this.url,
     required this.filename,
     required this.destinationPath,
@@ -41,8 +43,8 @@ class BrowserDownload extends Equatable {
   });
 
   BrowserDownload copyWith({
+    int? id,
     int? downloadId,
-    int? browserId,
     String? url,
     String? filename,
     String? destinationPath,
@@ -56,8 +58,8 @@ class BrowserDownload extends Equatable {
     String? errorMessage,
   }) {
     return BrowserDownload(
+      id: id ?? this.id,
       downloadId: downloadId ?? this.downloadId,
-      browserId: browserId ?? this.browserId,
       url: url ?? this.url,
       filename: filename ?? this.filename,
       destinationPath: destinationPath ?? this.destinationPath,
@@ -69,6 +71,55 @@ class BrowserDownload extends Equatable {
       startTimestamp: startTimestamp ?? this.startTimestamp,
       endTime: endTime ?? this.endTime,
       errorMessage: errorMessage ?? this.errorMessage,
+    );
+  }
+
+  DownloadEntity toEntity() {
+    return DownloadEntity(
+      id: id,
+      cefDownloadId: downloadId,
+      url: url,
+      fileName: filename,
+      filePath: destinationPath,
+      totalBytes: totalBytes,
+      downloadedBytes: receivedBytes,
+      statusIndex: status.index,
+      createdAt: startTimestamp.millisecondsSinceEpoch,
+      completedAt: endTime?.millisecondsSinceEpoch,
+      errorMessage: errorMessage,
+    );
+  }
+
+  factory BrowserDownload.fromEntity(DownloadEntity entity) {
+    DownloadStatus status;
+    if (entity.statusIndex >= 0 &&
+        entity.statusIndex < DownloadStatus.values.length) {
+      status = DownloadStatus.values[entity.statusIndex];
+    } else {
+      status = DownloadStatus.failed;
+    }
+
+    double progress = 0.0;
+    if (entity.totalBytes > 0) {
+      progress = (entity.downloadedBytes / entity.totalBytes).clamp(0.0, 1.0);
+    }
+
+    return BrowserDownload(
+      id: entity.id,
+      downloadId: entity.cefDownloadId,
+      url: entity.url,
+      filename: entity.fileName,
+      destinationPath: entity.filePath,
+      receivedBytes: entity.downloadedBytes,
+      totalBytes: entity.totalBytes,
+      currentSpeed: 0,
+      progress: progress,
+      status: status,
+      startTimestamp: DateTime.fromMillisecondsSinceEpoch(entity.createdAt),
+      endTime: entity.completedAt != null
+          ? DateTime.fromMillisecondsSinceEpoch(entity.completedAt!)
+          : null,
+      errorMessage: entity.errorMessage,
     );
   }
 
@@ -142,6 +193,9 @@ class BrowserDownload extends Equatable {
           return '$domain · $pct% of $formattedSize · $formattedSpeed';
         }
         return '$domain · $formattedReceived · $formattedSpeed';
+      case DownloadStatus.interrupted:
+        final pct = (progress * 100).toInt();
+        return '$domain · Interrupted ($pct%) · $formattedReceived of $formattedSize';
       case DownloadStatus.completed:
         return '$domain · $formattedSize · $formattedTime';
       case DownloadStatus.failed:
@@ -157,8 +211,8 @@ class BrowserDownload extends Equatable {
 
   @override
   List<Object?> get props => [
+    id,
     downloadId,
-    browserId,
     url,
     filename,
     destinationPath,

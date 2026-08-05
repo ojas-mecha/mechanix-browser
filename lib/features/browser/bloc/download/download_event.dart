@@ -87,6 +87,10 @@ class DownloadUpdatedEvent extends DownloadEvent {
   ];
 }
 
+class DownloadInitializeRequested extends DownloadEvent {
+  const DownloadInitializeRequested();
+}
+
 class DownloadCancelRequested extends DownloadEvent {
   final int downloadId;
 
@@ -107,31 +111,49 @@ class DownloadPauseRequested extends DownloadEvent {
 
 class DownloadResumeRequested extends DownloadEvent {
   final int downloadId;
+  final WebViewController? controller;
 
-  const DownloadResumeRequested(this.downloadId);
+  const DownloadResumeRequested(this.downloadId, {this.controller});
 
   @override
-  List<Object?> get props => [downloadId];
+  List<Object?> get props => [downloadId, controller];
 }
 
 class DownloadRemoveRequested extends DownloadEvent {
   final int downloadId;
+  final bool deleteFile;
 
-  const DownloadRemoveRequested(this.downloadId);
+  const DownloadRemoveRequested(this.downloadId, {this.deleteFile = false});
 
   @override
-  List<Object?> get props => [downloadId];
+  List<Object?> get props => [downloadId, deleteFile];
 }
 
 class DownloadRetryRequested extends DownloadEvent {
   final BrowserDownload download;
+  final WebViewController? controller;
 
-  const DownloadRetryRequested(this.download);
+  const DownloadRetryRequested(this.download, {this.controller});
 
   @override
-  List<Object?> get props => [download];
+  List<Object?> get props => [download, controller];
+}
+
+class DownloadRestartRequested extends DownloadEvent {
+  final BrowserDownload download;
+  final WebViewController? controller;
+
+  const DownloadRestartRequested(this.download, {this.controller});
+
+  @override
+  List<Object?> get props => [download, controller];
 }
 
 class DownloadClearCompletedRequested extends DownloadEvent {
-  const DownloadClearCompletedRequested();
+  final bool deleteFiles;
+
+  const DownloadClearCompletedRequested({this.deleteFiles = false});
+
+  @override
+  List<Object?> get props => [deleteFiles];
 }
