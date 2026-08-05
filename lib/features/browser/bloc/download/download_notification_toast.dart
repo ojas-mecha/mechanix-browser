@@ -24,7 +24,8 @@ class _DownloadNotificationOverlayState
     extends State<DownloadNotificationOverlay> {
   Timer? _autoHideTimer;
   bool _isVisible = false;
-  BrowserDownload? _lastDownload;
+  BrowserDownload? _activeToastDownload;
+  bool _initialized = false;
 
   void _resetTimer() {
     _autoHideTimer?.cancel();
@@ -35,6 +36,48 @@ class _DownloadNotificationOverlayState
         });
       }
     });
+  }
+
+  void _checkDownloadState(DownloadState state) {
+    final latest = state.lastStartedOrUpdated;
+
+    if (!_initialized) {
+      _initialized = true;
+      _activeToastDownload = latest;
+      return;
+    }
+
+    if (state.activeDownloadsCount == 0) {
+      _activeToastDownload = null;
+      if (_isVisible) {
+        _isVisible = false;
+        _autoHideTimer?.cancel();
+      }
+      return;
+    }
+
+    if (latest == null) return;
+
+    final active = _activeToastDownload;
+
+    final isNewerDownload =
+        active == null ||
+        latest.startTimestamp.isAfter(active.startTimestamp) ||
+        (latest.startTimestamp.isAtSameMomentAs(active.startTimestamp) &&
+            latest.downloadId != active.downloadId);
+
+    final isSameDownload =
+        active != null &&
+        (latest.downloadId == active.downloadId ||
+            (latest.id != 0 && active.id != 0 && latest.id == active.id));
+
+    if (isNewerDownload && latest.status == DownloadStatus.downloading) {
+      _activeToastDownload = latest;
+      _isVisible = true;
+      _resetTimer();
+    } else if (isSameDownload) {
+      _activeToastDownload = latest;
+    }
   }
 
   @override
@@ -49,99 +92,89 @@ class _DownloadNotificationOverlayState
     final colors = theme.extension<AppColorsExtension>()!;
     final l10n = AppLocalizations.of(context)!;
 
-    return BlocListener<DownloadBloc, DownloadState>(
-      listenWhen: (previous, current) {
-        return previous.lastStartedOrUpdated != current.lastStartedOrUpdated ||
-            previous.activeDownloadsCount != current.activeDownloadsCount;
-      },
-      listener: (context, state) {
-        if (state.lastStartedOrUpdated != null ||
-            state.activeDownloadsCount > 0) {
-          setState(() {
-            _isVisible = true;
-            _lastDownload = state.lastStartedOrUpdated;
-          });
-          _resetTimer();
+    return BlocBuilder<DownloadBloc, DownloadState>(
+      builder: (context, state) {
+        _checkDownloadState(state);
+
+        final activeDownload = _activeToastDownload;
+
+        if (!_isVisible ||
+            state.activeDownloadsCount == 0 ||
+            activeDownload == null) {
+          return const SizedBox.shrink();
         }
-      },
-      child: _isVisible
-          ? Positioned(
-              bottom: 24,
-              right: 24,
-              child: Material(
-                elevation: 8,
-                borderRadius: BorderRadius.circular(12),
-                color: colors.panelBackground,
-                child: InkWell(
-                  onTap: () => _openDownloads(context),
+
+        return Positioned(
+          bottom: 24,
+          right: 24,
+          child: Material(
+            elevation: 8,
+            borderRadius: BorderRadius.circular(12),
+            color: colors.panelBackground,
+            child: InkWell(
+              onTap: () => _openDownloads(context),
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: colors.dividerColor.withValues(alpha: 0.5),
-                        width: 1,
+                  border: Border.all(
+                    color: colors.dividerColor.withValues(alpha: 0.5),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Color(0xFF5B96F7),
+                        ),
                       ),
                     ),
-                    child: Row(
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Color(0xFF5B96F7),
-                            ),
+                        Text(
+                          l10n.downloadingFile(activeDownload.filename),
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: colors.searchBarText,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              _lastDownload != null
-                                  ? l10n.downloadingFile(
-                                      _lastDownload!.filename,
-                                    )
-                                  : l10n.downloadingFiles,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: colors.searchBarText,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            if (_lastDownload != null) ...[
-                              const SizedBox(height: 2),
-                              Text(
-                                _lastDownload!.formattedSpeed,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: colors.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                        const SizedBox(width: 16),
-                        Icon(
-                          Icons.arrow_forward_ios_rounded,
-                          size: 14,
-                          color: colors.textSecondary,
+                        const SizedBox(height: 2),
+                        Text(
+                          activeDownload.formattedSpeed,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: colors.textSecondary,
+                          ),
                         ),
                       ],
                     ),
-                  ),
+                    const SizedBox(width: 16),
+                    Icon(
+                      Icons.arrow_forward_ios_rounded,
+                      size: 14,
+                      color: colors.textSecondary,
+                    ),
+                  ],
                 ),
               ),
-            )
-          : const SizedBox.shrink(),
+            ),
+          ),
+        );
+      },
     );
   }
 
