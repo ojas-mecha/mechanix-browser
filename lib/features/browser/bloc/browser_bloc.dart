@@ -127,7 +127,11 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
 
     final tabId =
         id ?? 'tab_${DateTime.now().millisecondsSinceEpoch}_${_tabIdCounter++}';
-    final listener = _createEventListenerForTab(tabId, controller);
+    final listener = _createEventListenerForTab(
+      tabId,
+      controller,
+      isPrivate: isPrivate,
+    );
     controller.setWebviewListener(listener);
     if (load) {
       controller.initialize(initialUrl, isPrivate: isPrivate);
@@ -148,8 +152,9 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
   /// Sets up javascript communication channels and propagates load states, title, and url events to the bloc.
   WebviewEventsListener _createEventListenerForTab(
     String tabId,
-    WebViewController controller,
-  ) {
+    WebViewController controller, {
+    bool isPrivate = false,
+  }) {
     return WebviewEventsListener(
       onTitleChanged: (t) {
         add(BrowserTitleChanged(tabId: tabId, title: t));
@@ -244,6 +249,7 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
                 contentDisposition: contentDisposition,
                 mimeType: mimeType,
                 totalBytes: totalBytes,
+                isPrivate: isPrivate,
               ),
             );
           },

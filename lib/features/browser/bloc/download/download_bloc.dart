@@ -105,6 +105,7 @@ class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
 
   /// Persists [download] entity to ObjectBox and returns updated download with assigned DB primary key.
   BrowserDownload _saveDownloadToRepo(BrowserDownload download) {
+    if (download.isPrivate) return download;
     final repo = repository;
     if (repo == null) return download;
     final dbId = repo.saveDownload(download.toEntity());
@@ -174,10 +175,6 @@ class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
           );
           entity.statusIndex = DownloadStatus.interrupted.index;
           entity.errorMessage = 'Interrupted';
-
-          if (entity.filePath.isNotEmpty) {
-            await DownloadService.deleteFileFromDisk(entity.filePath);
-          }
 
           repo.saveDownload(entity);
         }
@@ -274,6 +271,7 @@ class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
         progress: 0.0,
         status: DownloadStatus.downloading,
         startTimestamp: DateTime.now(),
+        isPrivate: event.isPrivate,
       );
 
       newDownload = _saveDownloadToRepo(newDownload);

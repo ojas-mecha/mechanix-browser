@@ -15,6 +15,7 @@ class DownloadBeforeStarted extends DownloadEvent {
   final String contentDisposition;
   final String mimeType;
   final int totalBytes;
+  final bool isPrivate;
 
   const DownloadBeforeStarted({
     required this.controller,
@@ -24,6 +25,7 @@ class DownloadBeforeStarted extends DownloadEvent {
     required this.contentDisposition,
     required this.mimeType,
     required this.totalBytes,
+    this.isPrivate = false,
   });
 
   @override
@@ -35,6 +37,7 @@ class DownloadBeforeStarted extends DownloadEvent {
     contentDisposition,
     mimeType,
     totalBytes,
+    isPrivate,
   ];
 }
 

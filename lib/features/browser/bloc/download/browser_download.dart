@@ -25,6 +25,7 @@ class BrowserDownload extends Equatable {
   final DateTime startTimestamp;
   final DateTime? endTime;
   final String? errorMessage;
+  final bool isPrivate;
 
   const BrowserDownload({
     this.id = 0,
@@ -40,6 +41,7 @@ class BrowserDownload extends Equatable {
     required this.startTimestamp,
     this.endTime,
     this.errorMessage,
+    this.isPrivate = false,
   });
 
   BrowserDownload copyWith({
@@ -56,6 +58,7 @@ class BrowserDownload extends Equatable {
     DateTime? startTimestamp,
     DateTime? endTime,
     String? errorMessage,
+    bool? isPrivate,
   }) {
     return BrowserDownload(
       id: id ?? this.id,
@@ -71,6 +74,7 @@ class BrowserDownload extends Equatable {
       startTimestamp: startTimestamp ?? this.startTimestamp,
       endTime: endTime ?? this.endTime,
       errorMessage: errorMessage ?? this.errorMessage,
+      isPrivate: isPrivate ?? this.isPrivate,
     );
   }
 
@@ -224,5 +228,6 @@ class BrowserDownload extends Equatable {
     startTimestamp,
     endTime,
     errorMessage,
+    isPrivate,
   ];
 }
