@@ -25,17 +25,13 @@ class DownloadRepositoryImpl implements DownloadRepository {
                 ..order(DownloadEntity_.createdAt, flags: Order.descending))
               .build();
       try {
-        final results = query.find();
-        AppLogger.i(
-          '[DownloadRepository] Loaded ${results.length} total history records from ObjectBox DB',
-        );
-        return results;
+        return query.find();
       } finally {
         query.close();
       }
     } catch (e, stackTrace) {
       AppLogger.e(
-        'Unable to load download history from ObjectBox: $e',
+        '[DownloadRepository] Unable to load download history: $e',
         error: e,
         stack: stackTrace,
       );
@@ -48,8 +44,12 @@ class DownloadRepositoryImpl implements DownloadRepository {
   DownloadEntity? getDownloadById(int id) {
     try {
       return downloadBox.get(id);
-    } catch (e) {
-      AppLogger.e('Error fetching download entity by id $id: $e');
+    } catch (e, stackTrace) {
+      AppLogger.e(
+        '[DownloadRepository] Error fetching download by id $id: $e',
+        error: e,
+        stack: stackTrace,
+      );
       return null;
     }
   }
@@ -67,35 +67,24 @@ class DownloadRepositoryImpl implements DownloadRepository {
       } finally {
         query.close();
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       AppLogger.e(
-        'Error fetching download entity by cef id $cefDownloadId: $e',
+        '[DownloadRepository] Error fetching download by CEF id $cefDownloadId: $e',
+        error: e,
+        stack: stackTrace,
       );
       return null;
     }
   }
 
-  /// Saves or updates a download entity in ObjectBox storage.
-  ///
-  /// Returns the assigned ObjectBox primary key `id` (useful when saving a new entity with `id == 0`).
+  /// Saves or updates a download entity in ObjectBox storage and returns assigned primary key.
   @override
   int saveDownload(DownloadEntity entity) {
     try {
-      final isNew = entity.id == 0;
-      final savedId = downloadBox.put(entity);
-      if (isNew) {
-        AppLogger.i(
-          '[DownloadRepository] Inserted new record id=$savedId (cefId=${entity.cefDownloadId}, file=${entity.fileName}, statusIndex=${entity.statusIndex})',
-        );
-      } else {
-        AppLogger.i(
-          '[DownloadRepository] Updated id=$savedId (file=${entity.fileName}, bytes=${entity.downloadedBytes}/${entity.totalBytes}, statusIndex=${entity.statusIndex})',
-        );
-      }
-      return savedId;
+      return downloadBox.put(entity);
     } catch (e, stackTrace) {
       AppLogger.e(
-        'Unable to save download entity (id=${entity.id}): $e',
+        '[DownloadRepository] Unable to save download entity (id=${entity.id}): $e',
         error: e,
         stack: stackTrace,
       );
@@ -107,14 +96,10 @@ class DownloadRepositoryImpl implements DownloadRepository {
   @override
   List<int> saveAllDownloads(List<DownloadEntity> entities) {
     try {
-      final savedIds = downloadBox.putMany(entities);
-      AppLogger.i(
-        '[DownloadRepository] Batch saved ${savedIds.length} download entities',
-      );
-      return savedIds;
+      return downloadBox.putMany(entities);
     } catch (e, stackTrace) {
       AppLogger.e(
-        'Unable to save all download entities: $e',
+        '[DownloadRepository] Unable to batch save download entities: $e',
         error: e,
         stack: stackTrace,
       );
@@ -127,13 +112,15 @@ class DownloadRepositoryImpl implements DownloadRepository {
   bool deleteDownload(int id) {
     try {
       final removed = downloadBox.remove(id);
-      if (removed) {
-        AppLogger.i('[DownloadRepository] Deleted download record id=$id');
+      if (!removed) {
+        AppLogger.w(
+          '[DownloadRepository] Attempted to delete record id=$id, but it was not found in ObjectBox',
+        );
       }
       return removed;
     } catch (e, stackTrace) {
       AppLogger.e(
-        'Unable to delete download entity $id: $e',
+        '[DownloadRepository] Unable to delete download entity $id: $e',
         error: e,
         stack: stackTrace,
       );
@@ -146,20 +133,16 @@ class DownloadRepositoryImpl implements DownloadRepository {
   void clearHistory() {
     try {
       downloadBox.removeAll();
-      AppLogger.i(
-        '[DownloadRepository] Cleared all download history from database',
-      );
     } catch (e, stackTrace) {
       AppLogger.e(
-        'Unable to clear download history: $e',
+        '[DownloadRepository] Unable to clear download history: $e',
         error: e,
         stack: stackTrace,
       );
     }
   }
 
+  /// Closes repository resources. Note: The underlying ObjectBox Store is managed globally by [ObjectBoxService].
   @override
-  void close() {
-    // Store lifecycle is managed globally by ObjectBoxService
-  }
+  void close() {}
 }

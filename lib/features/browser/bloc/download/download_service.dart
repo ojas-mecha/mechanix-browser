@@ -4,34 +4,44 @@ import 'package:mechanix_browser/core/utils/app_logger.dart';
 
 class DownloadService {
   /// Returns the absolute path to the user's Downloads directory.
-  /// Falls back to `./Downloads` in the working directory if `$HOME` is unavailable.
   static Future<String> getDownloadsDirectoryPath() async {
-    final home = Platform.environment['HOME'];
-    final downloadsPath = home != null && home.isNotEmpty
-        ? '$home/Downloads'
-        : '${Directory.current.path}/Downloads';
+    try {
+      final home = Platform.environment['HOME'];
+      final downloadsPath = home != null && home.isNotEmpty
+          ? '$home/Downloads'
+          : '${Directory.current.path}/Downloads';
 
-    final dir = Directory(downloadsPath);
-    if (!dir.existsSync()) {
-      try {
-        dir.createSync(recursive: true);
-        AppLogger.i(
-          '[DownloadService] Created missing downloads directory: $downloadsPath',
-        );
-      } catch (e) {
-        AppLogger.i('Failed to create downloads directory: $e');
+      final dir = Directory(downloadsPath);
+      if (!dir.existsSync()) {
+        try {
+          dir.createSync(recursive: true);
+          AppLogger.i(
+            '[DownloadService] Created missing downloads directory: $downloadsPath',
+          );
+        } catch (e, stackTrace) {
+          AppLogger.e(
+            '[DownloadService] Failed to create downloads directory: $e',
+            error: e,
+            stack: stackTrace,
+          );
+        }
       }
-    }
 
-    return downloadsPath;
+      return downloadsPath;
+    } catch (e, stackTrace) {
+      AppLogger.e(
+        '[DownloadService] Error resolving downloads directory path: $e',
+        error: e,
+        stack: stackTrace,
+      );
+      return '${Directory.current.path}/Downloads';
+    }
   }
 
   /// Sanitizes a suggested file name to prevent path traversal exploits and illegal path characters.
-  ///
-  /// Removes characters like `/ \ : * ? " < > |` and `..` traversal sequences.
-  /// Falls back to `downloaded_file` if the sanitized result is empty or invalid.
   static String sanitizeFilename(String suggestedName, String url) {
     String name = suggestedName.trim();
+
     if (name.isEmpty) {
       try {
         final uri = Uri.parse(url);
@@ -46,7 +56,6 @@ class DownloadService {
       name = 'downloaded_file';
     }
 
-    // Remove path traversal sequences and illegal filesystem characters
     name = name.replaceAll(RegExp(r'[\/\x00-\x1F\x7F<>:"\\|?*]'), '_');
     while (name.contains('..')) {
       name = name.replaceAll('..', '_');
@@ -96,7 +105,7 @@ class DownloadService {
       final newPath = '$dirPath$separator$newFilename';
       if (!isPathInUse(newPath)) {
         AppLogger.i(
-          '[DownloadService] Collision detected for $filename. Resolved unique path: $newPath',
+          '[DownloadService] Filename collision detected. Resolved unique path: $newPath',
         );
         return newPath;
       }
@@ -104,9 +113,7 @@ class DownloadService {
     }
   }
 
-  /// Returns all potential disk paths for a target download path (including `.crdownload` variations).
-  ///
-  /// Used for scanning and deleting partial downloads created by Chromium.
+  /// Returns potential disk paths for [filePath], including its Chromium `.crdownload` partial buffer counterpart.
   static List<String> getPossibleFilePaths(String filePath) {
     if (filePath.isEmpty) return [];
     final set = <String>{filePath};
@@ -138,13 +145,17 @@ class DownloadService {
           if (len > 0) return len;
         }
       }
-    } catch (e) {
-      AppLogger.i('Error reading file length for $filePath: $e');
+    } catch (e, stackTrace) {
+      AppLogger.e(
+        '[DownloadService] Error reading file length for $filePath: $e',
+        error: e,
+        stack: stackTrace,
+      );
     }
     return 0;
   }
 
-  /// Deletes the downloaded file and any associated partial files (`.crdownload`) from disk.
+  /// Deletes target file and any partial Chromium buffer files (`.crdownload`) from disk.
   static Future<bool> deleteFileFromDisk(String filePath) async {
     if (filePath.isEmpty) return false;
     bool deleted = false;
@@ -153,17 +164,16 @@ class DownloadService {
       for (final p in possiblePaths) {
         final f = File(p);
         if (await f.exists()) {
-          final len = await f.length();
-          final ext = p.contains('.') ? p.split('.').last : 'no_ext';
-          AppLogger.i(
-            '[DownloadService] Deleted file (ext: .$ext, path: $p, size: $len bytes)',
-          );
           await f.delete();
           deleted = true;
         }
       }
-    } catch (e) {
-      AppLogger.i('Error deleting file from disk $filePath: $e');
+    } catch (e, stackTrace) {
+      AppLogger.e(
+        '[DownloadService] Error deleting file from disk ($filePath): $e',
+        error: e,
+        stack: stackTrace,
+      );
     }
     return deleted;
   }
@@ -171,7 +181,12 @@ class DownloadService {
   /// Opens a downloaded file using the default desktop OS viewer (`xdg-open`, `open`, `explorer`).
   static Future<void> openDownloadedFile(String filePath) async {
     final file = File(filePath);
-    if (!file.existsSync()) return;
+    if (!file.existsSync()) {
+      AppLogger.w(
+        '[DownloadService] Cannot open file: file does not exist at $filePath',
+      );
+      return;
+    }
 
     try {
       AppLogger.i('[DownloadService] Opening downloaded file: $filePath');
@@ -182,8 +197,12 @@ class DownloadService {
       } else if (Platform.isWindows) {
         await Process.run('cmd', ['/c', 'start', '', filePath]);
       }
-    } catch (e) {
-      AppLogger.i('Failed to open file: $e');
+    } catch (e, stackTrace) {
+      AppLogger.e(
+        '[DownloadService] Failed to open file $filePath: $e',
+        error: e,
+        stack: stackTrace,
+      );
     }
   }
 
@@ -194,17 +213,24 @@ class DownloadService {
         ? file.parent.path
         : Directory(filePath).path;
 
+    if (!Directory(folderPath).existsSync()) {
+      AppLogger.w(
+        '[DownloadService] Cannot open download folder: folder does not exist at $folderPath',
+      );
+      return;
+    }
+
     try {
       AppLogger.i('[DownloadService] Opening download folder: $folderPath');
       if (Platform.isLinux) {
         await Process.run('xdg-open', [folderPath]);
-      } else if (Platform.isMacOS) {
-        await Process.run('open', [folderPath]);
-      } else if (Platform.isWindows) {
-        await Process.run('explorer', [folderPath]);
       }
-    } catch (e) {
-      AppLogger.i('Failed to open folder: $e');
+    } catch (e, stackTrace) {
+      AppLogger.e(
+        '[DownloadService] Failed to open folder $folderPath: $e',
+        error: e,
+        stack: stackTrace,
+      );
     }
   }
 }

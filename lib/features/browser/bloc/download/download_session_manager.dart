@@ -4,7 +4,7 @@ import 'package:webview_cef/webview_cef.dart';
 
 /// Manages active WebViewController mappings, raw CEF download IDs,
 /// and deferred WebViewController disposal for closed tabs running active background downloads.
-class DownloadSessionManager {
+class DownloadControllerManager {
   /// Maps composite download ID -> active [WebViewController] across all open/hidden tabs.
   final Map<int, WebViewController> _controllerMap = {};
 
@@ -43,7 +43,7 @@ class DownloadSessionManager {
   void registerPendingDisposeController(WebViewController controller) {
     _pendingDisposeControllers.add(controller);
     AppLogger.i(
-      '[DownloadSessionManager] Registered background download controller for deferred disposal upon download completion',
+      '[DownloadControllerManager] Registered background download controller for deferred disposal upon download completion',
     );
   }
 
@@ -68,7 +68,7 @@ class DownloadSessionManager {
 
     if (!hasRemainingDownloads) {
       AppLogger.i(
-        '[DownloadSessionManager] All background downloads finished for closed tab. Disposing WebViewController now.',
+        '[DownloadControllerManager] All background downloads finished for closed tab. Disposing WebViewController now.',
       );
       _pendingDisposeControllers.remove(controller);
       try {

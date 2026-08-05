@@ -13,20 +13,15 @@ part 'download_event.dart';
 part 'download_state.dart';
 
 class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
-  /// ObjectBox database repository for persistent download history.
   final DownloadRepository? repository;
 
-  /// Manages active WebViewController mappings and background tab controller teardowns.
-  final DownloadSessionManager _sessionManager = DownloadSessionManager();
+  final DownloadControllerManager _controllerManager =
+      DownloadControllerManager();
 
-  /// Stores the timestamp of the last ObjectBox DB write per composite download ID for throttling.
-  ///
-  /// **Why Database Writes Are Throttled:**
-  /// High-frequency CEF progress updates fire dozens of times per second during active downloading.
-  /// Throttling ObjectBox saves to at most once per 1000ms prevents excessive synchronous disk I/O on the main thread.
+  /// Maps composite download ID -> timestamp of last ObjectBox write for I/O throttling.
   final Map<int, DateTime> _lastDbSaveMap = {};
 
-  /// Stores ObjectBox primary keys (`id`) for retried/restarted downloads to reuse existing DB records.
+  /// Tracks ObjectBox primary keys (`id`) reserved for retried/restarted downloads to avoid duplicate DB records.
   final Set<int> _pendingRetryRecordIds = {};
 
   DownloadBloc({this.repository}) : super(DownloadState.initial()) {
@@ -42,8 +37,7 @@ class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
     on<DownloadClearCompletedRequested>(_onClearCompleted);
   }
 
-  /// Generates a composite download ID combining the controller's hash and native CEF download ID.
-  /// Guarantees unique download identification across multiple concurrent webview tabs.
+  /// Combines the WebViewController instance hash and raw CEF integer download ID into a globally unique composite ID.
   static int getCompositeDownloadId(
     WebViewController controller,
     int rawCefDownloadId,
@@ -52,22 +46,16 @@ class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
     return controllerHash * 100000 + (rawCefDownloadId % 100000);
   }
 
-  /// Registers a [WebViewController] whose tab was closed, to defer disposal until all its active downloads finish.
+  /// Registers a closed tab's WebViewController to defer its disposal until active downloads complete.
   void registerPendingDisposeController(WebViewController controller) {
-    _sessionManager.registerPendingDisposeController(controller);
+    _controllerManager.registerPendingDisposeController(controller);
   }
 
-  /// Checks if a [WebViewController] is actively handling any in-progress downloads.
+  /// Returns `true` if [controller] is actively streaming an in-progress download.
   bool isControllerActive(WebViewController controller) {
-    return _sessionManager.isControllerActive(controller);
+    return _controllerManager.isControllerActive(controller);
   }
 
-  /// Locates an existing download record index in state matching a retry request.
-  ///
-  /// **Multi-Strategy Retry Matching:**
-  /// 1. Exact match on CEF download ID (active tab session).
-  /// 2. Filename stem / destination path match (handles duplicate URL downloads).
-  /// 3. Source URL fallback match among pending retry record IDs.
   int _findMatchingRetryIndex({
     required int compositeId,
     required int rawCefId,
@@ -76,43 +64,38 @@ class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
   }) {
     if (_pendingRetryRecordIds.isEmpty) return -1;
 
-    // 1. Try exact match on CEF download ID
     int index = state.downloads.indexWhere(
       (d) =>
           _pendingRetryRecordIds.contains(d.id) &&
           (d.downloadId == compositeId || d.downloadId == rawCefId),
     );
+    if (index != -1) return index;
 
-    // 2. Try match on filename/destination stem to distinguish duplicate URL downloads
-    if (index == -1) {
-      index = state.downloads.indexWhere(
-        (d) =>
-            _pendingRetryRecordIds.contains(d.id) &&
-            (d.filename == sanitizedName ||
-                d.destinationPath.endsWith(sanitizedName)),
-      );
-    }
+    index = state.downloads.indexWhere(
+      (d) =>
+          _pendingRetryRecordIds.contains(d.id) &&
+          (d.filename == sanitizedName ||
+              d.destinationPath.endsWith(sanitizedName)),
+    );
+    if (index != -1) return index;
 
-    // 3. Fall back to URL matching among pending retry IDs
-    if (index == -1) {
-      index = state.downloads.indexWhere(
-        (d) => _pendingRetryRecordIds.contains(d.id) && d.url == url,
-      );
-    }
-
-    return index;
+    return state.downloads.indexWhere(
+      (d) => _pendingRetryRecordIds.contains(d.id) && d.url == url,
+    );
   }
 
-  /// Persists [download] entity to ObjectBox and returns updated download with assigned DB primary key.
+  /// Persists [download] to ObjectBox and returns the entity with its assigned primary key.
   BrowserDownload _saveDownloadToRepo(BrowserDownload download) {
     if (download.isPrivate) return download;
+
     final repo = repository;
     if (repo == null) return download;
+
     final dbId = repo.saveDownload(download.toEntity());
     return download.id != dbId ? download.copyWith(id: dbId) : download;
   }
 
-  /// Updates or inserts [updatedDownload] item in state and emits updated state to UI listeners.
+  /// Updates or inserts a download item in BLoC state list and emits the updated state.
   void _updateStateWithDownload(
     Emitter<DownloadState> emit,
     BrowserDownload updatedDownload, {
@@ -145,78 +128,66 @@ class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
     );
   }
 
-  /// Handles initial application startup initialization.
-  ///
-  /// **Crash Recovery Workflow:**
-  /// 1. Queries ObjectBox DB for all saved download records.
-  /// 2. Converts abandoned incomplete downloads (`downloading`, `pending`, `paused`) from previous crashed/killed sessions to `interrupted`.
-  /// 3. Deletes partial `.crdownload` buffer files from disk.
-  /// 4. Emits restored download history into state for UI rendering.
+  /// Restores download history on app startup and converts incomplete transfers from crashed sessions to `interrupted`.
   Future<void> _onInitialize(
     DownloadInitializeRequested event,
     Emitter<DownloadState> emit,
   ) async {
     final repo = repository;
     if (repo == null) return;
+
     try {
       final entities = repo.getAllDownloads();
-      AppLogger.i(
-        '[DownloadBloc] Initialized download history. Loaded ${entities.length} records from DB',
-      );
-
       final loadedDownloads = <BrowserDownload>[];
 
       for (final entity in entities) {
         if (entity.statusIndex == DownloadStatus.downloading.index ||
             entity.statusIndex == DownloadStatus.pending.index ||
             entity.statusIndex == DownloadStatus.paused.index) {
-          AppLogger.i(
-            '[DownloadBloc] Download interrupted on browser restart id=${entity.id} (url=${entity.url})',
-          );
           entity.statusIndex = DownloadStatus.interrupted.index;
           entity.errorMessage = 'Interrupted';
-
           repo.saveDownload(entity);
         }
-
         loadedDownloads.add(BrowserDownload.fromEntity(entity));
       }
 
       emit(state.copyWith(downloads: loadedDownloads));
+      AppLogger.i(
+        '[DownloadBloc] Restored ${loadedDownloads.length} download records from database',
+      );
     } catch (e, stackTrace) {
       AppLogger.e(
-        'Error initializing download history: $e',
+        '[DownloadBloc] Failed to initialize download history: $e',
         error: e,
         stack: stackTrace,
       );
     }
   }
 
-  /// Handles initial download request triggered by CEF engine (`OnBeforeDownload`).
-  ///
-  /// **Workflow:**
-  /// 1. Computes composite unique download ID combining controller hash and native CEF ID.
-  /// 2. Sanitizes suggested filename and resolves target Downloads directory path.
-  /// 3. Checks if request links to a retried/restarted record in `_pendingRetryRecordIds`.
-  /// 4. Resolves destination file path and handles collisions (`file (1).zip`).
-  /// 5. Persists initial record in ObjectBox DB to obtain persistent primary key `id > 0`.
-  /// 6. Calls native `controller.continueDownload(rawCefId, destPath)` to start byte streaming.
+  /// Handles `OnBeforeDownload` native CEF triggers, generating unique target paths and starting byte streaming.
   Future<void> _onBeforeStarted(
     DownloadBeforeStarted event,
     Emitter<DownloadState> emit,
   ) async {
     try {
+      // Register CEF controller session and compute composite ID
       final rawCefId = event.downloadId;
       final compositeId = getCompositeDownloadId(event.controller, rawCefId);
 
-      _sessionManager.registerSession(compositeId, rawCefId, event.controller);
+      _controllerManager.registerSession(
+        compositeId,
+        rawCefId,
+        event.controller,
+      );
 
+      // Resolve downloads directory and sanitize target filename
       final dirPath = await DownloadService.getDownloadsDirectoryPath();
       final sanitizedName = DownloadService.sanitizeFilename(
         event.suggestedName,
         event.url,
       );
 
+      // Reuse existing DB record ID if matching pending retry request exists
       final existingIndex = _findMatchingRetryIndex(
         compositeId: compositeId,
         rawCefId: rawCefId,
@@ -226,15 +197,11 @@ class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
 
       int targetDbId = 0;
       if (existingIndex != -1) {
-        // Retrieve DB primary key to link transfer to existing record instead of creating a duplicate
         targetDbId = state.downloads[existingIndex].id;
-        // Consume the ID from the pending retries set now that matching succeeded
         _pendingRetryRecordIds.remove(targetDbId);
-        AppLogger.i(
-          '[DownloadBloc] Linked retry/restart request to existing database record id=$targetDbId for url=${event.url}',
-        );
       }
 
+      // Collect active destination paths to avoid duplicate filename collisions
       final activePaths = state.downloads
           .where(
             (d) => d.status == DownloadStatus.downloading && d.id != targetDbId,
@@ -242,14 +209,13 @@ class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
           .map((d) => d.destinationPath)
           .toSet();
 
+      // Resolve destination path (reusing for retries vs generating unique path)
       final String destPath;
       if (targetDbId > 0 &&
           existingIndex != -1 &&
           state.downloads[existingIndex].destinationPath.isNotEmpty) {
-        // Reuse original destination path for retried or restarted downloads
         destPath = state.downloads[existingIndex].destinationPath;
       } else {
-        // Generate a new unique destination path for new downloads to avoid filename collisions
         destPath = DownloadService.getUniqueDestinationPath(
           dirPath,
           sanitizedName,
@@ -259,6 +225,7 @@ class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
 
       final extractedFilename = destPath.split('/').last.split('\\').last;
 
+      // Construct model entity, persist to database, and update BLoC state
       var newDownload = BrowserDownload(
         id: targetDbId,
         downloadId: compositeId,
@@ -275,32 +242,38 @@ class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
       );
 
       newDownload = _saveDownloadToRepo(newDownload);
-      AppLogger.i(
-        '[DownloadBloc] Starting download id=${newDownload.id} (compositeId=$compositeId, rawCefId=$rawCefId, file=${newDownload.filename}, url=${event.url})',
-      );
-
       _updateStateWithDownload(emit, newDownload, existingIndex: existingIndex);
 
-      // Instruct CEF native webview controller to start writing data stream to destPath
+      AppLogger.i(
+        '[DownloadBloc] Starting download: ${newDownload.filename} (id=${newDownload.id}, path=$destPath)',
+      );
+
+      // Instruct native CEF webview controller to start writing byte stream
       await event.controller.continueDownload(
         rawCefId,
         destPath,
         showDialog: false,
       );
-    } catch (e) {
-      AppLogger.e('Error handling download before start: $e');
+    } catch (e, stackTrace) {
+      AppLogger.e(
+        '[DownloadBloc] Error starting download: $e',
+        error: e,
+        stack: stackTrace,
+      );
     }
   }
 
-  /// Handles progress tick events emitted by CEF engine during active downloading.
-  ///
-  /// **Workflow:**
-  /// 1. Matches incoming composite download ID to active state list.
-  /// 2. Translates native CEF event flags (`isComplete`, `isCanceled`, `isInterrupted`) into domain [DownloadStatus].
-  /// 3. Computes progress percentage and updates transfer speed / received bytes.
-  /// 4. **DB Write Throttling:** Persists to ObjectBox at most once per 1000ms, or immediately on terminal status.
-  /// 5. Disposes pending background controllers when terminal status is reached.
+  int _findDownloadIndex(int downloadId) {
+    return state.downloads.indexWhere(
+      (d) =>
+          (d.id > 0 && d.id == downloadId) ||
+          (d.downloadId != 0 && d.downloadId == downloadId),
+    );
+  }
+
+  /// Processes progress ticks from CEF, updating speed, progress, and throttled DB persistence.
   void _onUpdated(DownloadUpdatedEvent event, Emitter<DownloadState> emit) {
+    // Match composite ID to active download in state
     final compositeId = getCompositeDownloadId(
       event.controller,
       event.downloadId,
@@ -313,7 +286,8 @@ class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
 
     final existing = state.downloads[index];
 
-    DownloadStatus status;
+    // Map native CEF status flags to domain DownloadStatus
+    DownloadStatus status = DownloadStatus.downloading;
     String? errorMsg;
 
     if (existing.status == DownloadStatus.paused &&
@@ -321,29 +295,29 @@ class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
         !event.isCanceled &&
         !event.isInterrupted) {
       status = DownloadStatus.paused;
-    } else {
-      switch (event) {
-        case _ when event.isComplete:
-          status = DownloadStatus.completed;
-        case _ when event.isCanceled:
-          status = DownloadStatus.cancelled;
-          errorMsg = 'Cancelled';
-        case _ when event.isInterrupted:
-          status = DownloadStatus.failed;
-          errorMsg = _getInterruptReasonText(event.interruptReason);
-        default:
-          status = DownloadStatus.downloading;
-      }
+    } else if (event.isComplete) {
+      status = DownloadStatus.completed;
+    } else if (event.isCanceled) {
+      status = DownloadStatus.cancelled;
+      errorMsg = 'Cancelled';
+    } else if (event.isInterrupted) {
+      status = DownloadStatus.failed;
+      errorMsg = _getInterruptReasonText(event.interruptReason);
     }
 
-    double progress = 0.0;
-    if (event.totalBytes > 0) {
-      progress = (event.receivedBytes / event.totalBytes).clamp(0.0, 1.0);
-    }
+    final progress = event.totalBytes > 0
+        ? (event.receivedBytes / event.totalBytes).clamp(0.0, 1.0)
+        : 0.0;
 
     final filename = event.fullPath.isNotEmpty
         ? event.fullPath.split('/').last.split('\\').last
         : existing.filename;
+
+    final isTerminal =
+        status == DownloadStatus.completed ||
+        status == DownloadStatus.failed ||
+        status == DownloadStatus.cancelled ||
+        status == DownloadStatus.paused;
 
     BrowserDownload updatedDownload = existing.copyWith(
       filename: filename,
@@ -364,13 +338,9 @@ class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
       errorMessage: errorMsg ?? existing.errorMessage,
     );
 
+    // Throttled persistence — save to database at most once per 1000ms or on terminal status
     final now = DateTime.now();
     final lastSave = _lastDbSaveMap[compositeId];
-    final isTerminal =
-        status == DownloadStatus.completed ||
-        status == DownloadStatus.failed ||
-        status == DownloadStatus.cancelled ||
-        status == DownloadStatus.paused;
 
     if (isTerminal ||
         lastSave == null ||
@@ -381,57 +351,34 @@ class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
 
     _updateStateWithDownload(emit, updatedDownload, existingIndex: index);
 
-    // Minimal structured logging for key terminal lifecycle transitions
-    if (status == DownloadStatus.completed) {
-      AppLogger.i(
-        '[DownloadBloc] Download completed id=${updatedDownload.id} (file=${updatedDownload.filename}, bytes=${updatedDownload.receivedBytes})',
-      );
-    } else if (status == DownloadStatus.failed) {
-      AppLogger.i(
-        '[DownloadBloc] Download failed id=${updatedDownload.id} (reason=${updatedDownload.errorMessage})',
-      );
-    } else if (status == DownloadStatus.cancelled) {
-      AppLogger.i('[DownloadBloc] Download cancelled id=${updatedDownload.id}');
-    }
-
+    // Clean up session tracking and dispose idle background webviews on terminal status
     if (isTerminal && status != DownloadStatus.paused) {
-      _sessionManager.removeSession(compositeId);
+      _controllerManager.removeSession(compositeId);
       _lastDbSaveMap.remove(compositeId);
-      _sessionManager.checkAndDisposePendingController(
+      _controllerManager.checkAndDisposePendingController(
         event.controller,
         state.downloads,
       );
     }
   }
 
-  /// Cancels an active download stream.
-  ///
-  /// **Workflow:**
-  /// 1. Issues `cancelDownload` command to native CEF engine controller.
-  /// 2. Purges active session mappings.
-  /// 3. Updates ObjectBox record status to `cancelled`.
-  /// 4. Disposes background WebViewController if closed tab has no other active transfers.
+  /// Cancels an active download stream, purges session mappings, and disposes background controllers if idle.
   Future<void> _onCancelRequested(
     DownloadCancelRequested event,
     Emitter<DownloadState> emit,
   ) async {
-    final index = state.downloads.indexWhere(
-      (d) => d.id == event.downloadId || d.downloadId == event.downloadId,
-    );
+    try {
+      final index = _findDownloadIndex(event.downloadId);
+      if (index == -1) return;
 
-    if (index != -1) {
       final item = state.downloads[index];
-      AppLogger.i(
-        '[DownloadBloc] Cancelling download id=${item.id} (compositeId=${item.downloadId})',
-      );
-
-      final controller = _sessionManager.getController(item.downloadId);
-      final rawCefId = _sessionManager.getRawCefId(item.downloadId);
+      final controller = _controllerManager.getController(item.downloadId);
+      final rawCefId = _controllerManager.getRawCefId(item.downloadId);
 
       if (controller != null) {
         await controller.cancelDownload(rawCefId);
       }
-      _sessionManager.removeSession(item.downloadId);
+      _controllerManager.removeSession(item.downloadId);
 
       var updated = item.copyWith(
         status: DownloadStatus.cancelled,
@@ -446,31 +393,32 @@ class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
       _updateStateWithDownload(emit, updated, existingIndex: index);
 
       if (controller != null) {
-        _sessionManager.checkAndDisposePendingController(
+        _controllerManager.checkAndDisposePendingController(
           controller,
           state.downloads,
         );
       }
+    } catch (e, stackTrace) {
+      AppLogger.e(
+        '[DownloadBloc] Error cancelling download: $e',
+        error: e,
+        stack: stackTrace,
+      );
     }
   }
 
-  /// Pauses an active download stream.
+  /// Pauses an active CEF download stream and updates DB record status to `paused`.
   Future<void> _onPauseRequested(
     DownloadPauseRequested event,
     Emitter<DownloadState> emit,
   ) async {
-    final index = state.downloads.indexWhere(
-      (d) => d.id == event.downloadId || d.downloadId == event.downloadId,
-    );
+    try {
+      final index = _findDownloadIndex(event.downloadId);
+      if (index == -1) return;
 
-    if (index != -1) {
       final item = state.downloads[index];
-      AppLogger.i(
-        '[DownloadBloc] Pausing download id=${item.id} (compositeId=${item.downloadId})',
-      );
-
-      final controller = _sessionManager.getController(item.downloadId);
-      final rawCefId = _sessionManager.getRawCefId(item.downloadId);
+      final controller = _controllerManager.getController(item.downloadId);
+      final rawCefId = _controllerManager.getRawCefId(item.downloadId);
 
       if (controller != null) {
         await controller.pauseDownload(rawCefId);
@@ -482,258 +430,250 @@ class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
       }
 
       _updateStateWithDownload(emit, updated, existingIndex: index);
+    } catch (e, stackTrace) {
+      AppLogger.e(
+        '[DownloadBloc] Error pausing download: $e',
+        error: e,
+        stack: stackTrace,
+      );
     }
   }
 
-  /// Resumes a paused download stream.
-  ///
-  /// **Workflow:**
-  /// 1. If native CEF controller stream is active in memory, issues `resumeDownload(rawCefId)`.
-  /// 2. If stream/tab was closed, falls back to reloading source URL in webview (`loadUrl`) while adding ID to `_pendingRetryRecordIds`.
+  /// Resumes a paused stream, or re-initiates the download via `loadUrl` if the tab session was closed.
   Future<void> _onResumeRequested(
     DownloadResumeRequested event,
     Emitter<DownloadState> emit,
   ) async {
     try {
-      final index = state.downloads.indexWhere(
-        (d) => d.id == event.downloadId || d.downloadId == event.downloadId,
-      );
+      final index = _findDownloadIndex(event.downloadId);
+      if (index == -1) return;
 
-      if (index != -1) {
-        final download = state.downloads[index];
-        AppLogger.i(
-          '[DownloadBloc] Resuming download id=${download.id} (compositeId=${download.downloadId})',
-        );
+      final download = state.downloads[index];
+      final controller =
+          event.controller ??
+          _controllerManager.getController(download.downloadId);
+      final rawCefId = _controllerManager.getRawCefId(download.downloadId);
 
-        final controller =
-            event.controller ??
-            _sessionManager.getController(download.downloadId);
-        final rawCefId = _sessionManager.getRawCefId(download.downloadId);
-
-        if (download.status == DownloadStatus.paused &&
-            controller != null &&
-            controller.value) {
-          await controller.resumeDownload(rawCefId);
-          var updated = download.copyWith(status: DownloadStatus.downloading);
-          if (updated.id > 0) {
-            updated = _saveDownloadToRepo(updated);
-          }
-          _updateStateWithDownload(emit, updated, existingIndex: index);
-        } else if (controller != null && controller.value) {
-          if (download.id > 0) {
-            _pendingRetryRecordIds.add(download.id);
-          }
-          await controller.loadUrl(download.url);
-        } else {
-          AppLogger.i(
-            '[DownloadBloc] Cannot resume download id=${download.id}: No active webview controller available.',
-          );
+      if (download.status == DownloadStatus.paused &&
+          controller != null &&
+          controller.value) {
+        await controller.resumeDownload(rawCefId);
+        var updated = download.copyWith(status: DownloadStatus.downloading);
+        if (updated.id > 0) {
+          updated = _saveDownloadToRepo(updated);
         }
+        _updateStateWithDownload(emit, updated, existingIndex: index);
+      } else if (controller != null && controller.value) {
+        // Fallback: If live CEF stream was lost, reload source URL to re-trigger download
+        if (download.id > 0) {
+          _pendingRetryRecordIds.add(download.id);
+        }
+        await controller.loadUrl(download.url);
       }
-    } catch (e) {
-      AppLogger.e("Error resuming download: $e");
+    } catch (e, stackTrace) {
+      AppLogger.e(
+        '[DownloadBloc] Error resuming download: $e',
+        error: e,
+        stack: stackTrace,
+      );
     }
   }
 
-  /// Removes a download record from state and ObjectBox storage.
-  ///
-  /// **History Removal vs File Deletion:**
-  /// - `event.deleteFile == true`: Deletes physical target file and `.crdownload` file from disk via `DownloadService.deleteFileFromDisk`.
-  /// - `event.deleteFile == false`: Leaves physical file on disk intact and only deletes ObjectBox DB record and state entry.
+  /// Removes a download record from state/ObjectBox, optionally deleting physical target and `.crdownload` files from disk.
   Future<void> _onRemoveRequested(
     DownloadRemoveRequested event,
     Emitter<DownloadState> emit,
   ) async {
-    final index = state.downloads.indexWhere(
-      (d) =>
-          d.id == event.downloadId ||
-          (d.id == 0 && d.downloadId == event.downloadId),
-    );
+    try {
+      final index = _findDownloadIndex(event.downloadId);
 
-    if (index != -1) {
-      final item = state.downloads[index];
-      final targetRecordId = item.id != 0 ? item.id : event.downloadId;
+      if (index != -1) {
+        final item = state.downloads[index];
+        final targetRecordId = item.id != 0 ? item.id : event.downloadId;
 
-      AppLogger.i(
-        '[DownloadBloc] Removing download id=$targetRecordId (deleteFile=${event.deleteFile})',
-      );
-
-      if (event.deleteFile && item.destinationPath.isNotEmpty) {
-        try {
+        // Optionally delete physical target file and partial buffer (.crdownload) from disk
+        if (event.deleteFile && item.destinationPath.isNotEmpty) {
           await DownloadService.deleteFileFromDisk(item.destinationPath);
-        } catch (e) {
-          AppLogger.i('Error deleting file on disk $e');
+        }
+
+        // Delete persistent record from ObjectBox database repository
+        final repo = repository;
+        if (repo != null && targetRecordId > 0) {
+          repo.deleteDownload(targetRecordId);
+        }
+
+        final controller = _controllerManager.getController(item.downloadId);
+        final rawCefId = _controllerManager.getRawCefId(item.downloadId);
+
+        // Cancel active native CEF stream if transfer is running
+        if ((item.status == DownloadStatus.downloading ||
+                item.status == DownloadStatus.pending ||
+                item.status == DownloadStatus.paused) &&
+            controller != null) {
+          try {
+            await controller.cancelDownload(rawCefId);
+          } catch (_) {}
+        }
+
+        // Clean up session manager tracking and throttle maps
+        _controllerManager.removeSession(item.downloadId);
+        _lastDbSaveMap.remove(item.downloadId);
+
+        if (controller != null) {
+          _controllerManager.checkAndDisposePendingController(
+            controller,
+            state.downloads,
+          );
+        }
+      } else {
+        final repo = repository;
+        if (repo != null && event.downloadId > 0) {
+          repo.deleteDownload(event.downloadId);
         }
       }
 
-      final repo = repository;
-      if (repo != null && targetRecordId > 0) {
-        repo.deleteDownload(targetRecordId);
-      }
-
-      final controller = _sessionManager.getController(item.downloadId);
-      final rawCefId = _sessionManager.getRawCefId(item.downloadId);
-
-      if ((item.status == DownloadStatus.downloading ||
-              item.status == DownloadStatus.pending ||
-              item.status == DownloadStatus.paused) &&
-          controller != null) {
-        try {
-          await controller.cancelDownload(rawCefId);
-        } catch (e) {
-          AppLogger.i('Error cancelling CEF download stream on remove: $e');
-        }
-      }
-
-      _sessionManager.removeSession(item.downloadId);
-      _lastDbSaveMap.remove(item.downloadId);
-
-      if (controller != null) {
-        _sessionManager.checkAndDisposePendingController(
-          controller,
-          state.downloads,
+      // Filter out removed item and emit updated state to UI listeners
+      final updatedList = List<BrowserDownload>.from(state.downloads)
+        ..removeWhere(
+          (d) =>
+              d.id == event.downloadId ||
+              (d.id == 0 && d.downloadId == event.downloadId),
         );
-      }
-    } else {
-      final repo = repository;
-      if (repo != null && event.downloadId > 0) {
-        repo.deleteDownload(event.downloadId);
-      }
-    }
 
-    final updatedList = List<BrowserDownload>.from(state.downloads)
-      ..removeWhere(
-        (d) =>
-            d.id == event.downloadId ||
-            (d.id == 0 && d.downloadId == event.downloadId),
+      emit(state.copyWith(downloads: updatedList));
+    } catch (e, stackTrace) {
+      AppLogger.e(
+        '[DownloadBloc] Error removing download: $e',
+        error: e,
+        stack: stackTrace,
       );
-
-    emit(state.copyWith(downloads: updatedList));
+    }
   }
 
-  /// Retries a failed download by reloading source URL in webview.
-  ///
-  /// **Workflow:**
-  /// 1. Registers persistent `id` in `_pendingRetryRecordIds`.
-  /// 2. Reloads source URL in webview via `controller.loadUrl(item.url)`.
-  /// 3. Subsequent `_onBeforeStarted` matches `_pendingRetryRecordIds` to reuse existing database ID.
+  /// Retries a failed download by reloading source URL in webview while preserving its DB record ID.
   Future<void> _onRetryRequested(
     DownloadRetryRequested event,
     Emitter<DownloadState> emit,
   ) async {
-    final index = state.downloads.indexWhere(
-      (d) =>
-          (event.download.id > 0 && d.id == event.download.id) ||
-          (d.downloadId != 0 && d.downloadId == event.download.downloadId) ||
-          (d.url == event.download.url),
-    );
-    final item = index != -1 ? state.downloads[index] : event.download;
+    try {
+      // Find matching download in active state list by ID, composite ID, or URL
+      final index = state.downloads.indexWhere(
+        (d) =>
+            (event.download.id > 0 && d.id == event.download.id) ||
+            (d.downloadId != 0 && d.downloadId == event.download.downloadId) ||
+            (d.url == event.download.url),
+      );
+      final item = index != -1 ? state.downloads[index] : event.download;
 
-    AppLogger.i(
-      '[DownloadBloc] Retrying download id=${item.id}, file=${item.filename}',
-    );
+      // Register primary key in pending retry set so existing DB ID is reused
+      if (item.id > 0) {
+        _pendingRetryRecordIds.add(item.id);
+      }
 
-    if (item.id > 0) {
-      _pendingRetryRecordIds.add(item.id);
-    }
-
-    final controller =
-        event.controller ?? _sessionManager.getController(item.downloadId);
-    if (controller != null && controller.value) {
-      await controller.loadUrl(item.url);
-    } else {
-      AppLogger.i(
-        "No active webview controller available to retry download ${event.download.filename}",
+      // Reload URL in webview controller to re-trigger download stream
+      final controller =
+          event.controller ?? _controllerManager.getController(item.downloadId);
+      if (controller != null && controller.value) {
+        await controller.loadUrl(item.url);
+      } else {
+        AppLogger.w(
+          '[DownloadBloc] Cannot retry download ${event.download.filename}: WebViewController is unavailable',
+        );
+      }
+    } catch (e, stackTrace) {
+      AppLogger.e(
+        '[DownloadBloc] Error retrying download: $e',
+        error: e,
+        stack: stackTrace,
       );
     }
   }
 
-  /// Restarts a download from byte 0, discarding any partial `.crdownload` file on disk.
+  /// Restarts a download from byte 0, purging any partial `.crdownload` file buffer on disk.
   Future<void> _onRestartRequested(
     DownloadRestartRequested event,
     Emitter<DownloadState> emit,
   ) async {
-    AppLogger.i(
-      '[DownloadBloc] Restarting download id=${event.download.id} from byte 0',
-    );
-
-    if (event.download.destinationPath.isNotEmpty) {
-      try {
+    try {
+      if (event.download.destinationPath.isNotEmpty) {
         await DownloadService.deleteFileFromDisk(
           event.download.destinationPath,
         );
-      } catch (e) {
-        AppLogger.i('Error clearing partial file on restart: $e');
       }
-    }
 
-    if (event.download.id > 0) {
-      _pendingRetryRecordIds.add(event.download.id);
-      final repo = repository;
-      if (repo != null) {
-        final entity = event.download.toEntity();
-        entity.downloadedBytes = 0;
-        entity.statusIndex = DownloadStatus.pending.index;
-        repo.saveDownload(entity);
+      if (event.download.id > 0) {
+        _pendingRetryRecordIds.add(event.download.id);
+        final repo = repository;
+        if (repo != null) {
+          final entity = event.download.toEntity();
+          entity.downloadedBytes = 0;
+          entity.statusIndex = DownloadStatus.pending.index;
+          repo.saveDownload(entity);
+        }
       }
-    }
 
-    final controller =
-        event.controller ??
-        _sessionManager.getController(event.download.downloadId);
-    if (controller != null && controller.value) {
-      await controller.loadUrl(event.download.url);
+      final controller =
+          event.controller ??
+          _controllerManager.getController(event.download.downloadId);
+      if (controller != null && controller.value) {
+        await controller.loadUrl(event.download.url);
+      } else {
+        AppLogger.w(
+          '[DownloadBloc] Cannot restart download ${event.download.filename}: WebViewController is unavailable',
+        );
+      }
+    } catch (e, stackTrace) {
+      AppLogger.e(
+        '[DownloadBloc] Error restarting download: $e',
+        error: e,
+        stack: stackTrace,
+      );
     }
   }
 
-  /// Clears finished downloads (`completed`, `cancelled`, `failed`) from state and ObjectBox.
+  /// Clears finished downloads (`completed`, `cancelled`, `failed`) from state and database.
   Future<void> _onClearCompleted(
     DownloadClearCompletedRequested event,
     Emitter<DownloadState> emit,
   ) async {
-    final toRemove = state.downloads
-        .where(
-          (d) =>
-              d.status == DownloadStatus.completed ||
-              d.status == DownloadStatus.cancelled ||
-              d.status == DownloadStatus.failed,
-        )
-        .toList();
+    try {
+      final toRemove = state.downloads
+          .where(
+            (d) =>
+                d.status == DownloadStatus.completed ||
+                d.status == DownloadStatus.cancelled ||
+                d.status == DownloadStatus.failed,
+          )
+          .toList();
 
-    AppLogger.i(
-      '[DownloadBloc] Clearing finished downloads (count=${toRemove.length}, deleteFiles=${event.deleteFiles})',
-    );
-
-    final repo = repository;
-    for (final item in toRemove) {
-      if (event.deleteFiles && item.destinationPath.isNotEmpty) {
-        try {
+      final repo = repository;
+      for (final item in toRemove) {
+        if (event.deleteFiles && item.destinationPath.isNotEmpty) {
           await DownloadService.deleteFileFromDisk(item.destinationPath);
-        } catch (e) {
-          AppLogger.i('Error deleting file on clear completed: $e');
         }
+        if (repo != null && item.id > 0) {
+          repo.deleteDownload(item.id);
+        }
+        _controllerManager.removeSession(item.downloadId);
+        _lastDbSaveMap.remove(item.downloadId);
       }
-      if (repo != null && item.id > 0) {
-        repo.deleteDownload(item.id);
-      }
-      _sessionManager.removeSession(item.downloadId);
-      _lastDbSaveMap.remove(item.downloadId);
+
+      final toRemoveSet = toRemove.toSet();
+      final updatedList = state.downloads
+          .where((d) => !toRemoveSet.contains(d))
+          .toList();
+
+      emit(state.copyWith(downloads: updatedList));
+    } catch (e, stackTrace) {
+      AppLogger.e(
+        '[DownloadBloc] Error clearing completed downloads: $e',
+        error: e,
+        stack: stackTrace,
+      );
     }
-
-    final updatedList = state.downloads
-        .where(
-          (d) =>
-              d.status == DownloadStatus.downloading ||
-              d.status == DownloadStatus.pending ||
-              d.status == DownloadStatus.paused ||
-              d.status == DownloadStatus.interrupted,
-        )
-        .toList();
-
-    emit(state.copyWith(downloads: updatedList));
   }
 
-  /// Translates CEF interrupt reasons into human-readable error text.
+  /// Translates CEF interrupt reason codes into user-friendly error strings.
   String _getInterruptReasonText(int reason) {
     switch (reason) {
       case 10:
@@ -749,31 +689,38 @@ class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
     }
   }
 
-  /// Cleans up resources when Bloc is disposed.
-  /// Marks incomplete downloads as `cancelled` and cleans up partial files on disk.
+  /// Cleans up resources when BLoC is disposed, marking active downloads as cancelled.
   @override
   Future<void> close() async {
-    final repo = repository;
-    if (repo != null) {
-      for (final d in state.downloads) {
-        if ((d.status == DownloadStatus.downloading ||
-                d.status == DownloadStatus.pending ||
-                d.status == DownloadStatus.paused) &&
-            d.id > 0) {
-          final entity = d.toEntity();
-          entity.statusIndex = DownloadStatus.cancelled.index;
-          entity.errorMessage = 'Cancelled';
-          if (d.destinationPath.isNotEmpty) {
-            await DownloadService.deleteFileFromDisk(d.destinationPath);
+    try {
+      final repo = repository;
+      if (repo != null) {
+        for (final d in state.downloads) {
+          if ((d.status == DownloadStatus.downloading ||
+                  d.status == DownloadStatus.pending ||
+                  d.status == DownloadStatus.paused) &&
+              d.id > 0) {
+            final entity = d.toEntity();
+            entity.statusIndex = DownloadStatus.cancelled.index;
+            entity.errorMessage = 'Cancelled';
+            if (d.destinationPath.isNotEmpty) {
+              await DownloadService.deleteFileFromDisk(d.destinationPath);
+            }
+            repo.saveDownload(entity);
           }
-          repo.saveDownload(entity);
         }
       }
-    }
 
-    _sessionManager.close();
-    _lastDbSaveMap.clear();
-    _pendingRetryRecordIds.clear();
+      _controllerManager.close();
+      _lastDbSaveMap.clear();
+      _pendingRetryRecordIds.clear();
+    } catch (e, stackTrace) {
+      AppLogger.e(
+        '[DownloadBloc] Error closing DownloadBloc: $e',
+        error: e,
+        stack: stackTrace,
+      );
+    }
     return super.close();
   }
 }
