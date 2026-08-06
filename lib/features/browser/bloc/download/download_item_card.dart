@@ -144,7 +144,7 @@ class _DownloadMetaText extends StatelessWidget {
             ),
             TextSpan(
               text:
-                  ' · ${download.formattedReceived} of ${download.formattedSize}',
+                  ' · ${l10n.downloadProgressOf(download.formattedReceived, download.formattedSize)}',
             ),
           ],
         ),

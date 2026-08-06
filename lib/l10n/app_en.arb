@@ -507,6 +507,54 @@
         "type": "int"
       }
     }
+  },
+  "downloadInitError": "Failed to initialize download history",
+  "@downloadInitError": {
+    "description": "Error message when download history initialization fails"
+  },
+  "downloadStartError": "Failed to start download",
+  "@downloadStartError": {
+    "description": "Error message when download fails to start"
+  },
+  "downloadCancelError": "Failed to cancel download",
+  "@downloadCancelError": {
+    "description": "Error message when download cancellation fails"
+  },
+  "downloadPauseError": "Failed to pause download",
+  "@downloadPauseError": {
+    "description": "Error message when download pause fails"
+  },
+  "downloadResumeError": "Failed to resume download",
+  "@downloadResumeError": {
+    "description": "Error message when download resume fails"
+  },
+  "downloadRemoveError": "Failed to remove download",
+  "@downloadRemoveError": {
+    "description": "Error message when download removal fails"
+  },
+  "downloadRetryError": "Failed to retry download",
+  "@downloadRetryError": {
+    "description": "Error message when download retry fails"
+  },
+  "downloadRestartError": "Failed to restart download",
+  "@downloadRestartError": {
+    "description": "Error message when download restart fails"
+  },
+  "downloadClearError": "Failed to clear completed downloads",
+  "@downloadClearError": {
+    "description": "Error message when clearing downloads fails"
+  },
+  "downloadProgressOf": "{received} of {total}",
+  "@downloadProgressOf": {
+    "description": "Progress text showing formatted bytes received out of total size",
+    "placeholders": {
+      "received": {
+        "type": "String"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
   }
 }
 

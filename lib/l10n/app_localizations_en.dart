@@ -29,8 +29,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get privateBrowsing => 'Private Browsing';
 
   @override
-  String get privateBrowsingDescription =>
-      'Pages you view in private tabs won\'t be saved in your history, cookie store, or search history after you close all of your private tabs. Bookmarks and downloads will still be kept.';
+  String get privateBrowsingDescription => 'Pages you view in private tabs won\'t be saved in your history, cookie store, or search history after you close all of your private tabs. Bookmarks and downloads will still be kept.';
 
   @override
   String get privateTabs => 'Private Tabs';
@@ -195,8 +194,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get clearDownloadsTitle => 'Clear Downloads';
 
   @override
-  String get clearDownloadsDialogContent =>
-      'Do you want to clear download records from history or also delete downloaded files from disk?';
+  String get clearDownloadsDialogContent => 'Do you want to clear download records from history or also delete downloaded files from disk?';
 
   @override
   String get clearHistoryOnly => 'Clear History Only';
@@ -209,7 +207,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String removeDownloadDialogContent(String filename) {
-    return 'Do you want to remove "$filename" from history or delete the downloaded file from disk?';
+    return 'Do you want to remove \"$filename\" from history or delete the downloaded file from disk?';
   }
 
   @override
@@ -367,5 +365,37 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String errFailedCode(int errorCode) {
     return 'ERR_FAILED ($errorCode)';
+  }
+
+  @override
+  String get downloadInitError => 'Failed to initialize download history';
+
+  @override
+  String get downloadStartError => 'Failed to start download';
+
+  @override
+  String get downloadCancelError => 'Failed to cancel download';
+
+  @override
+  String get downloadPauseError => 'Failed to pause download';
+
+  @override
+  String get downloadResumeError => 'Failed to resume download';
+
+  @override
+  String get downloadRemoveError => 'Failed to remove download';
+
+  @override
+  String get downloadRetryError => 'Failed to retry download';
+
+  @override
+  String get downloadRestartError => 'Failed to restart download';
+
+  @override
+  String get downloadClearError => 'Failed to clear completed downloads';
+
+  @override
+  String downloadProgressOf(String received, String total) {
+    return '$received of $total';
   }
 }

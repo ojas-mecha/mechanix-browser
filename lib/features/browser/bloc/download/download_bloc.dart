@@ -151,7 +151,7 @@ class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
         loadedDownloads.add(BrowserDownload.fromEntity(entity));
       }
 
-      emit(state.copyWith(downloads: loadedDownloads));
+      emit(state.copyWith(downloads: loadedDownloads, clearError: true));
       AppLogger.i(
         '[DownloadBloc] Restored ${loadedDownloads.length} download records from database',
       );
@@ -161,6 +161,7 @@ class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
         error: e,
         stack: stackTrace,
       );
+      emit(state.copyWith(errorType: DownloadErrorType.initializationFailed));
     }
   }
 
@@ -260,6 +261,7 @@ class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
         error: e,
         stack: stackTrace,
       );
+      emit(state.copyWith(errorType: DownloadErrorType.startFailed));
     }
   }
 
@@ -404,6 +406,7 @@ class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
         error: e,
         stack: stackTrace,
       );
+      emit(state.copyWith(errorType: DownloadErrorType.cancelFailed));
     }
   }
 
@@ -436,6 +439,7 @@ class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
         error: e,
         stack: stackTrace,
       );
+      emit(state.copyWith(errorType: DownloadErrorType.pauseFailed));
     }
   }
 
@@ -476,6 +480,7 @@ class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
         error: e,
         stack: stackTrace,
       );
+      emit(state.copyWith(errorType: DownloadErrorType.resumeFailed));
     }
   }
 
@@ -547,6 +552,7 @@ class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
         error: e,
         stack: stackTrace,
       );
+      emit(state.copyWith(errorType: DownloadErrorType.removeFailed));
     }
   }
 
@@ -586,6 +592,7 @@ class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
         error: e,
         stack: stackTrace,
       );
+      emit(state.copyWith(errorType: DownloadErrorType.retryFailed));
     }
   }
 
@@ -628,6 +635,7 @@ class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
         error: e,
         stack: stackTrace,
       );
+      emit(state.copyWith(errorType: DownloadErrorType.restartFailed));
     }
   }
 
@@ -670,6 +678,7 @@ class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
         error: e,
         stack: stackTrace,
       );
+      emit(state.copyWith(errorType: DownloadErrorType.clearFailed));
     }
   }
 

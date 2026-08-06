@@ -48,6 +48,34 @@ class DownloadsScreen extends StatelessWidget {
     );
   }
 
+  String _getLocalizedErrorMessage(
+    DownloadErrorType? errorType,
+    AppLocalizations l10n,
+  ) {
+    switch (errorType) {
+      case DownloadErrorType.initializationFailed:
+        return l10n.downloadInitError;
+      case DownloadErrorType.startFailed:
+        return l10n.downloadStartError;
+      case DownloadErrorType.cancelFailed:
+        return l10n.downloadCancelError;
+      case DownloadErrorType.pauseFailed:
+        return l10n.downloadPauseError;
+      case DownloadErrorType.resumeFailed:
+        return l10n.downloadResumeError;
+      case DownloadErrorType.removeFailed:
+        return l10n.downloadRemoveError;
+      case DownloadErrorType.retryFailed:
+        return l10n.downloadRetryError;
+      case DownloadErrorType.restartFailed:
+        return l10n.downloadRestartError;
+      case DownloadErrorType.clearFailed:
+        return l10n.downloadClearError;
+      case null:
+        return '';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -101,9 +129,59 @@ class DownloadsScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: BlocBuilder<DownloadBloc, DownloadState>(
+      body: BlocConsumer<DownloadBloc, DownloadState>(
+        listenWhen: (previous, current) =>
+            current.hasError && previous.errorType != current.errorType,
+        listener: (context, state) {
+          final message = _getLocalizedErrorMessage(state.errorType, l10n);
+          if (message.isNotEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(message),
+                backgroundColor: theme.colorScheme.error,
+              ),
+            );
+          }
+        },
         builder: (context, state) {
           if (state.downloads.isEmpty) {
+            if (state.hasError) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(24),
+                        decoration: BoxDecoration(
+                          color: colors.panelBackground,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: colors.dividerColor,
+                            width: 1.5,
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.error_outline,
+                          color: theme.colorScheme.error,
+                          size: 48,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Text(
+                        _getLocalizedErrorMessage(state.errorType, l10n),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: colors.searchBarText,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+
             return Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,

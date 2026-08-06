@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mechanix_browser/features/browser/bloc/download/browser_download.dart';
 import 'package:mechanix_browser/features/browser/bloc/download/download_bloc.dart';
+import 'package:mechanix_browser/features/browser/data/models/download_entity.dart';
+import 'package:mechanix_browser/features/browser/data/repositories/download_repository.dart';
 import 'package:mechanix_browser/features/browser/data/repositories/download_repository_impl.dart';
 import 'package:mechanix_browser/objectbox.g.dart';
 import 'package:webview_cef/webview_cef.dart';
@@ -649,5 +651,30 @@ void main() {
         await bloc.close();
       },
     );
+
+    test(
+      'Test 9: Initialization failure emits error state with descriptive errorType',
+      () async {
+        final failingRepo = FailingDownloadRepository();
+        final bloc = DownloadBloc(repository: failingRepo);
+
+        expect(bloc.state.hasError, isFalse);
+
+        bloc.add(const DownloadInitializeRequested());
+        await Future.delayed(const Duration(milliseconds: 50));
+
+        expect(bloc.state.hasError, isTrue);
+        expect(bloc.state.errorType, DownloadErrorType.initializationFailed);
+
+        await bloc.close();
+      },
+    );
   });
+}
+
+class FailingDownloadRepository extends Fake implements DownloadRepository {
+  @override
+  List<DownloadEntity> getAllDownloads() {
+    throw Exception('Database corrupt or unreadable');
+  }
 }
