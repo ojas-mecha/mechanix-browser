@@ -498,7 +498,15 @@ class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
 
         // Optionally delete physical target file and partial buffer (.crdownload) from disk
         if (event.deleteFile && item.destinationPath.isNotEmpty) {
-          await DownloadService.deleteFileFromDisk(item.destinationPath);
+          try {
+            await DownloadService.deleteFileFromDisk(item.destinationPath);
+          } catch (e, stackTrace) {
+            AppLogger.e(
+              '[DownloadBloc] Error deleting download file: $e',
+              error: e,
+              stack: stackTrace,
+            );
+          }
         }
 
         // Delete persistent record from ObjectBox database repository
@@ -603,9 +611,17 @@ class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
   ) async {
     try {
       if (event.download.destinationPath.isNotEmpty) {
-        await DownloadService.deleteFileFromDisk(
-          event.download.destinationPath,
-        );
+        try {
+          await DownloadService.deleteFileFromDisk(
+            event.download.destinationPath,
+          );
+        } catch (e, stackTrace) {
+          AppLogger.e(
+            '[DownloadBloc] Error deleting download file: $e',
+            error: e,
+            stack: stackTrace,
+          );
+        }
       }
 
       if (event.download.id > 0) {
@@ -657,7 +673,15 @@ class DownloadBloc extends Bloc<DownloadEvent, DownloadState> {
       final repo = repository;
       for (final item in toRemove) {
         if (event.deleteFiles && item.destinationPath.isNotEmpty) {
-          await DownloadService.deleteFileFromDisk(item.destinationPath);
+          try {
+            await DownloadService.deleteFileFromDisk(item.destinationPath);
+          } catch (e, stackTrace) {
+            AppLogger.e(
+              '[DownloadBloc] Error deleting download file: $e',
+              error: e,
+              stack: stackTrace,
+            );
+          }
         }
         if (repo != null && item.id > 0) {
           repo.deleteDownload(item.id);

@@ -747,7 +747,11 @@ class BrowserBloc extends Bloc<BrowserEvent, BrowserState> {
       final tabsList = isPrivate ? state.privateTabs : state.normalTabs;
 
       for (final tab in tabsList) {
-        await _disposeOrDeferController(tab.controller);
+        try {
+          await _disposeOrDeferController(tab.controller);
+        } catch (e, stackTrace) {
+          AppLogger.e("Error closing controller", error: e, stack: stackTrace);
+        }
       }
 
       if (isPrivate) {
